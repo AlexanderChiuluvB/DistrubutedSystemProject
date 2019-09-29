@@ -13,7 +13,7 @@ public class kafkaUtil {
 
     private static JsonObject getKafkaConfig(String name) throws FileNotFoundException {
         JsonParser parser = new JsonParser();
-        JsonElement parse = parser.parse(new FileReader("kafka-properties.json"));
+        JsonElement parse = parser.parse(new FileReader("/home/alex/DistrubutedSystemProject/demo/src/main/resources/kafka-properties.json"));
         JsonObject jsonObject = parse.getAsJsonObject().getAsJsonObject(name);
         System.out.println(jsonObject);
         return jsonObject;
