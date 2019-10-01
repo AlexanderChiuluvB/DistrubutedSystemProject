@@ -1,6 +1,6 @@
 {
   "producer": {
-    "bootstrap.servers": "106.13.170.3:32772,106.13.170.3:32775,106.13.170.3:32776",
+    "bootstrap.servers": "106.13.170.3:32788,106.13.170.3:32787,106.13.170.3:32789",
     "key.serializer": "org.apache.kafka.common.serialization.StringSerializer",
     "value.serializer": "org.apache.kafka.common.serialization.StringSerializer",
     "max.request.size": "10485760",
@@ -11,7 +11,7 @@
     "acks": "1"
   },
   "consumer": {
-    "bootstrap.servers": "106.13.170.3:9093,106.13.170.3:9093,106.13.170.3:9093",
+    "bootstrap.servers": "106.13.170.3:32788,106.13.170.3:32787,106.13.170.3:32789",
     "group.id": "test222",
     "session.timeout.ms": "30000",
     "key.deserializer": "org.apache.kafka.common.serialization.StringDeserializer",
