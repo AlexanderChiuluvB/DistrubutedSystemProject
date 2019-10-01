@@ -13,8 +13,9 @@ public class kafkaConsumer {
 
     }
 
-    public static void main() {
-
+    public void commit() {
 
     }
+
+
 }
