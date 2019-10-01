@@ -146,16 +146,8 @@ UPDATE table_name SET n=n-1 WHERE n>1;
 
 [秒杀架构](https://www.cnblogs.com/andy-zhou/p/5364136.html)
 
+[强烈建议参考这个](https://gongfukangee.github.io/2019/06/09/SecondsKill/)
 
-
-
-## 资料汇总
-
-请先参考这个,以更好完成git 团队协作开发
 [git 团队协作](https://www.cnblogs.com/nongzihong/p/10448516.html). 
 
-[JAVA分布式架构](https://www.cnblogs.com/nongzihong/p/10448516.html)
-
-### RPC架构示例
-
-https://github.com/SwordfallYeung/CustomRpcFramework
+[RPC架构示例]https://github.com/SwordfallYeung/CustomRpcFramework
