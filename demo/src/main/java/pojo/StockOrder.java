@@ -11,11 +11,11 @@ import java.util.Date;
 @Setter
 public class StockOrder {
 
-    private Integer id;
+    private Integer Id;
 
-    private Integer sid;
+    private Integer Sid;
 
-    private String name;
+    private String Name;
 
-    private Date createTime;
+    private Date CreateTime;
 }
