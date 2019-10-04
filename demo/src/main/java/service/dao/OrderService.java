@@ -1,6 +1,8 @@
 package service.dao;
 
+import org.springframework.context.annotation.Bean;
 import pojo.Stock;
+
 
 public interface OrderService {
 

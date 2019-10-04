@@ -1,7 +1,11 @@
 package controller;
 
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -14,6 +18,7 @@ import javax.servlet.http.HttpServletRequest;
 @Slf4j
 @Controller
 @RequestMapping(value = "/")
+@Api(value="接口", tags = "程序启动接口")
 public class controller {
 
     private static final String success = "SUCCESS";
@@ -25,7 +30,8 @@ public class controller {
     @Autowired
     private StockService stockService;
 
-    @RequestMapping(value = "/initDBAndRedis", method = RequestMethod.POST)
+    @ApiOperation(value = "初始化数据库", notes = "初始化数据库")
+    @RequestMapping(value = "initDBAndRedis", method = RequestMethod.POST)
     @ResponseBody
     public String initDBAndRedisBefore(HttpServletRequest request) {
 
@@ -45,8 +51,8 @@ public class controller {
         return res == 1 ? success : error;
     }
 
-
-    @RequestMapping(value = "/createOrderWithLimitAndRedisAndKafka", method = RequestMethod.POST)
+    @ApiOperation(value = "秒杀", notes = "秒杀")
+    @RequestMapping(value = "createOrderWithLimitAndRedisAndKafka", method = RequestMethod.POST)
     @ResponseBody
     public String createOrderWithLimitsAndRedisAndKafka(HttpServletRequest request ,int sid) {
 
@@ -58,5 +64,4 @@ public class controller {
         }
         return "秒杀请求正在处理,排队中";
     }
-
 }

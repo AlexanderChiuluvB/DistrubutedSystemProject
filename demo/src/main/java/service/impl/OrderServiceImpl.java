@@ -12,9 +12,8 @@ import pojo.Stock;
 import pojo.StockOrder;
 import redis.RedisPool;
 import redis.StockWithRedis;
-import scala.Int;
 import service.dao.OrderService;
-import service.dao.StockOrderMapper;
+import dao.StockOrderMapper;
 
 import java.util.Date;
 
