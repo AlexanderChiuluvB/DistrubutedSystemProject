@@ -9,14 +9,14 @@ import lombok.Setter;
 @Setter
 public class Stock {
 
-    private Integer id;
+    private Integer Id;
 
-    private String name;
+    private String Name;
 
-    private Integer count;
+    private Integer Count;
 
-    private Integer sale;
+    private Integer Sale;
 
-    private Integer version;
+    private Integer Version;
 
 }

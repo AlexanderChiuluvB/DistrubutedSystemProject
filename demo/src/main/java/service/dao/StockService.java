@@ -28,7 +28,7 @@ public interface StockService {
     /**
      * 乐观锁更新库存，解决超卖问题
      */
-    int updateStockByOptimistic(Stock stock);
+    int updateStockInRedis(Stock stock);
 
     /**
      * 初始化数据库
