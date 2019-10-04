@@ -1,4 +1,4 @@
-package service.dao;
+package dao;
 
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
@@ -21,5 +21,5 @@ public interface StockOrderMapper {
      * 成功为 0，失败为 -1
      */
     @Update("TRUNCATE TABLE stock_order")
-    void clearDB();
+    int clearDB();
 }

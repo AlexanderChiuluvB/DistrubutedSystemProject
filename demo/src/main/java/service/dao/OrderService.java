@@ -1,11 +1,17 @@
 package service.dao;
 
+import org.springframework.context.annotation.Bean;
 import pojo.Stock;
+
 
 public interface OrderService {
 
     /**
-     * Kafka 消费消息
+     * 清空订单表
+     */
+    int delOrderDB();
+
+    /**
      *
      * @param stock
      */
@@ -18,4 +24,8 @@ public interface OrderService {
      * @return
      */
     void checkRedisAndSendToKafka(int sid) throws Exception;
+
+
+
+
 }
