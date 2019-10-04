@@ -38,6 +38,11 @@ public class OrderServiceImpl implements OrderService {
     private Gson gson = new GsonBuilder().create();
 
     @Override
+    public int delOrderDB() {
+        return stockOrderMapper.clearDB();
+    }
+
+    @Override
     public int createOrderAndSendToDB(Stock stock) throws Exception {
         //TODO 乐观锁更新库存和Redis
         updateRedis(stock);
@@ -59,6 +64,7 @@ public class OrderServiceImpl implements OrderService {
         kafkaTemplate.send(kafkaTopic, gson.toJson(stock));
         log.info("消息发送至Kafka成功");
     }
+
 
     /**
      * 创建持久化到数据库的订单
