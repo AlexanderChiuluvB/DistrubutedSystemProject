@@ -1,4 +1,4 @@
-package kafka;
+package DistributedSystem.miaosha.kafka;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;

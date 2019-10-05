@@ -1,5 +1,11 @@
-package service.impl;
+package DistributedSystem.miaosha.service.impl;
 
+import DistributedSystem.miaosha.redis.RedisPool;
+import DistributedSystem.miaosha.redis.StockWithRedis;
+import DistributedSystem.miaosha.service.api.OrderService;
+import DistributedSystem.miaosha.dao.StockOrderMapper;
+import DistributedSystem.miaosha.pojo.Stock;
+import DistributedSystem.miaosha.pojo.StockOrder;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import lombok.extern.slf4j.Slf4j;
@@ -8,12 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import pojo.Stock;
-import pojo.StockOrder;
-import redis.RedisPool;
-import redis.StockWithRedis;
-import service.dao.OrderService;
-import dao.StockOrderMapper;
+
 
 import java.util.Date;
 

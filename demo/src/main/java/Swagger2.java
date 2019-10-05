@@ -1,5 +1,3 @@
-package startApplication;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import springfox.documentation.builders.ApiInfoBuilder;
@@ -20,7 +18,7 @@ public class Swagger2 {
                 .host("localhost:8080")
                 .select()
                 //为当前包路径
-                .apis(RequestHandlerSelectors.basePackage("demo.controller"))
+                .apis(RequestHandlerSelectors.basePackage("controller"))
                 .paths(PathSelectors.any())
                 .build();
     }

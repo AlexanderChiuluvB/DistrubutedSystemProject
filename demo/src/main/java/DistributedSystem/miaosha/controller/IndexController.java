@@ -1,25 +1,23 @@
-package controller;
+package DistributedSystem.miaosha.controller;
 
+import DistributedSystem.miaosha.redis.StockWithRedis;
+import DistributedSystem.miaosha.service.api.OrderService;
+import DistributedSystem.miaosha.service.api.StockService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
-import redis.StockWithRedis;
-import service.dao.OrderService;
-import service.dao.StockService;
 import javax.servlet.http.HttpServletRequest;
 
 @Slf4j
 @Controller
 @RequestMapping(value = "/")
 @Api(value="接口", tags = "程序启动接口")
-public class controller {
+public class IndexController {
 
     private static final String success = "SUCCESS";
     private static final String error = "ERROR";

@@ -1,10 +1,10 @@
 package kafka;
 
+import DistributedSystem.miaosha.kafka.kafkaUtil;
 import org.junit.Test;
 
 import java.io.FileNotFoundException;
 
-import static org.junit.Assert.*;
 
 public class kafkaUtilTest {
     @Test

@@ -1,9 +1,12 @@
-package service.dao;
-
-import org.springframework.context.annotation.Bean;
-import pojo.Stock;
+package DistributedSystem.miaosha.service.api;
 
 
+import DistributedSystem.miaosha.pojo.Stock;
+import org.apache.ibatis.annotations.Mapper;
+import org.mybatis.spring.annotation.MapperScan;
+import org.springframework.stereotype.Repository;
+
+@Mapper
 public interface OrderService {
 
     /**

@@ -1,5 +1,6 @@
 package kafka;
 
+import DistributedSystem.miaosha.kafka.kafkaProducer;
 import org.junit.Test;
 
 import java.io.FileNotFoundException;

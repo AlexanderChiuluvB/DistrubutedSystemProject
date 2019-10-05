@@ -1,12 +1,15 @@
-package dao;
+package DistributedSystem.miaosha.dao;
 
+import DistributedSystem.miaosha.pojo.Stock;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
-import pojo.Stock;
+import org.springframework.stereotype.Repository;
+
 
 @Mapper
+@Repository
 public interface StockMapper {
 
     /**
