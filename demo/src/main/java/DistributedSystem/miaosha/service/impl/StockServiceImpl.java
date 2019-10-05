@@ -1,10 +1,11 @@
-package service.impl;
+package DistributedSystem.miaosha.service.impl;
 
+import DistributedSystem.miaosha.service.api.StockService;
+import DistributedSystem.miaosha.dao.StockMapper;
+import DistributedSystem.miaosha.pojo.Stock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import pojo.Stock;
-import dao.StockMapper;
-import service.dao.StockService;
+
 
 
 @Service(value = "StockService")

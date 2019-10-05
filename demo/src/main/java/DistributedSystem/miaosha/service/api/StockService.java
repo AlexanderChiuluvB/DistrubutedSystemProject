@@ -1,7 +1,10 @@
-package service.dao;
+package DistributedSystem.miaosha.service.api;
 
-import pojo.Stock;
+import DistributedSystem.miaosha.pojo.Stock;
+import org.apache.ibatis.annotations.Mapper;
+import org.springframework.stereotype.Repository;
 
+@Mapper
 public interface StockService {
 
     /**

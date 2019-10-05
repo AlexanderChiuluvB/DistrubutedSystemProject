@@ -1,4 +1,4 @@
-package redis;
+package DistributedSystem.miaosha.redis;
 
 import lombok.extern.slf4j.Slf4j;
 

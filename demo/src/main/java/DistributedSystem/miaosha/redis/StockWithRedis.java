@@ -1,7 +1,7 @@
-package redis;
+package DistributedSystem.miaosha.redis;
 
+import DistributedSystem.miaosha.pojo.Stock;
 import lombok.extern.slf4j.Slf4j;
-import pojo.Stock;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Transaction;
 

@@ -1,4 +1,4 @@
-package mysql;
+package DistributedSystem.miaosha.mysql;
 
 import java.sql.*;
 

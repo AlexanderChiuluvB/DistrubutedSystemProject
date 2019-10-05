@@ -1,5 +1,7 @@
-package kafka;
+package DistributedSystem.miaosha.kafka;
 
+import DistributedSystem.miaosha.pojo.Stock;
+import DistributedSystem.miaosha.service.api.OrderService;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import lombok.extern.slf4j.Slf4j;
@@ -7,8 +9,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
-import pojo.Stock;
-import service.dao.OrderService;
 import java.util.Optional;
 
 @Slf4j

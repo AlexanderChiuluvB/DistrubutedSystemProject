@@ -1,4 +1,4 @@
-package kafka;
+package DistributedSystem.miaosha.kafka;
 
 import org.apache.kafka.clients.consumer.*;
 import org.apache.kafka.common.TopicPartition;

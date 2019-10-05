@@ -1,4 +1,4 @@
-package kafka;
+package DistributedSystem.miaosha.kafka;
 
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
