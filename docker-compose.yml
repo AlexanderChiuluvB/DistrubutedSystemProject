@@ -1,0 +1,15 @@
+version: '2'
+services:
+    mysql:
+        network_mode: "host"
+        environment:
+            MYSQL_ROOT_PASSWORD: "888888"
+        image: "mysql:5.6" 
+        restart: always
+        volumes:
+            - "./db:/var/lib/mysql"
+            - "./conf/my.cnf:/etc/my.cnf"
+            - "./init:/docker-entrypoint-initdb.d/"
+        ports:
+            - "3306:3306"
+
