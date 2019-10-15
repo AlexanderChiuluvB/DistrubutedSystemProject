@@ -29,6 +29,10 @@
 
   数据库读写为磁盘IO,因此可以把部分数据或者业务逻辑转移到内存缓存(Redis)
 
+- 负载均衡
+  利用Nginx使用多个服务器并发处理请求,以减少单个服务器的压力
+  
+
 核心思想:
 
 - 尽量把请求**拦截在上流**，层层过滤，通过充分利用**缓存与消息队列**，提高请求处理速度以及削峰，根本核心是最终减轻对数据库的压力.如果不在上流拦截，会导致数据库读写锁冲突变得严重，并且导致死锁，最终请求超时．
@@ -68,9 +72,176 @@ MYSQL: 持久化存储商品信息，实现数据的强一致性检验，同时�
 
 ![img](https://img-blog.csdnimg.cn/20181210152632678.jpg?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3poYW5nbGlfd2VpMDQwMw==,size_16,color_FFFFFF,t_70)
 
-#### 具体设计流程
+#### 具体实现逻辑
 
-我们暂时忽略前端层只关注后端
+
+Kafka 异步削峰 与 Redis耦合的示意图
+
+![img](https://raw.githubusercontent.com/gongfukangEE/gongfukangEE.github.io/master/_pic/%E5%88%86%E5%B8%83%E5%BC%8F/%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97%E7%BC%93%E5%86%B2.png)
+
+* Redis限流
+
+假设现在有 10 个商品，有 1000 个并发秒杀请求，最终只有 10 个订单会成功创建，也就是说有 990 的请求是无效的，这些无效的请求也会给数据库带来压力，因此可以在在请求落到数据库之前就将无效的请求过滤掉，将并发控制在一个可控的范围，这样落到数据库的压力就小很多.要求实现一个**Redis 限流算法**,限制只有少部分秒杀请求获得"令牌"
+
+这部分demo代码并没有涉及.
+
+* 限流之后,获得令牌的请求将首先向Redis查询是否库存足够
+
+如果库存是充足的,才把下单请求发送给Kafka.
+
+```
+ /**
+     * 秒杀的请求
+     * @param sid stock id
+     */
+    @Override
+    public void checkRedisAndSendToKafka(int sid) {
+        //首先检查Redis(内存缓存)的库存
+        Stock stock = checkStockWithRedis(sid);
+        //下单请求发送到Kafka,序列化类
+        kafkaTemplate.send(kafkaTopic, gson.toJson(stock));
+        log.info("消息发送至Kafka成功");
+    }
+
+```
+检查Redis库存是否充足的逻辑
+
+```
+
+private Stock checkStockWithRedis(int sid) {
+
+        Integer count = Integer.parseInt(RedisPool.get(StockWithRedis.STOCK_COUNT + sid));
+        Integer version = Integer.parseInt(RedisPool.get(StockWithRedis.STOCK_VERSION + sid));
+        Integer sale = Integer.parseInt(RedisPool.get(StockWithRedis.STOCK_SALE + sid));
+        if (count < 1) {
+            log.info("库存不足");
+            throw new RuntimeException("库存不足 Redis currentCount: " + sale);
+        }
+        Stock stock = new Stock();
+        stock.setId(sid);
+        stock.setCount(count);
+        stock.setSale(sale);
+        stock.setVersion(version);
+        // 此处应该是热更新，但是在数据库中只有一个商品，所以直接赋值
+        stock.setName("mobile phone");
+        return stock;
+    }
+```
+
+* Kafka负责监听发送到Kafka的信息,尝试用乐观锁机制更新数据库
+
+```
+ @Override
+    public int createOrderAndSendToDB(Stock stock) throws Exception {
+        //TODO 乐观锁更新Redis
+        updateRedis(stock);
+        // 创建订单,更新MYSQL数据库
+        int result = createOrder(stock);
+        if (result == 1) {
+            System.out.println("Kafka 消费成功");
+        } else {
+            System.out.println("Kafka 消费失败");
+        }
+        return result;
+    }
+```
+
+我们来看看updateRedis的逻辑实现
+
+```   private void updateRedis(Stock stock) {
+        int result = stockService.updateStockInRedis(stock);
+        if (result == 0) {
+            throw new RuntimeException("并发更新Redis失败");
+        }
+        StockWithRedis.updateStockWithRedis(stock);
+    }
+
+
+```
+
+
+其中stockService的updateStockInRedis方法对应一条乐观锁更新的SQL语句
+
+该函数定义在dao层(data access object层)
+```
+/**
+     * 乐观锁 version
+     */
+    @Update("UPDATE stock SET count = count - 1, sale = sale + 1, version = version + 1 WHERE " +
+            "id = #{id, jdbcType = INTEGER} AND version = #{version, jdbcType = INTEGER}")
+    int updateByOptimistic(Stock stock);
+
+```
+
+该语句可以返回结果并发更新MYSQL能否成功,如果成功则说明秒杀成功.可以调用StockWithRedis.updateStockWithRedis()方法,这个函数能够真正改变Redis的数据.
+
+```
+public static void updateStockWithRedis(Stock stock) {
+        Jedis jedis = null;
+        try {
+            jedis = RedisPool.getJedis();
+            Transaction transaction = jedis.multi();
+            //开始事务
+            RedisPool.decr(STOCK_COUNT + stock.getCount());
+            RedisPool.incr(STOCK_SALE + stock.getCount());
+            RedisPool.incr(STOCK_VERSION + stock.getVersion());
+            transaction.exec();
+        } catch (Exception e) {
+            log.error("updateStock fail", e);
+            e.printStackTrace();
+        }finally {
+            RedisPool.jedisPoolClose(jedis);
+        }
+    }
+```
+
+好到这里我们完成了对updateRedis的流程分析.
+
+我们回头看createOrderAndSendToDB函数
+
+```
+int result = createOrder(stock);
+```
+接下来是createOrder函数.修改完redis中的数据后,我们接下来修改MYSQL层的数据
+
+```
+  /**
+     * 创建持久化到数据库的订单
+     */
+    private int createOrder(Stock stock) {
+
+        StockOrder order = new StockOrder();
+        order.setId(stock.getId());
+        order.setCreateTime(new Date());
+        order.setName(stock.getName());
+        int result = stockOrderMapper.insertToDB(order);
+        if (result == 0) {
+            throw new RuntimeException("创建订单失败");
+        }
+        return result;
+    }
+```
+
+核心就是insertToDB()这个函数,这个函数同样定义在dao,对应了一个SQL语句
+
+这个语句表示插入一个新的订单.
+
+```
+@Insert("INSERT INTO stock_order (id, sid, name, create_time) VALUES " +
+            "(#{id, jdbcType = INTEGER}, #{sid, jdbcType = INTEGER}, #{name, jdbcType = VARCHAR}, #{createTime, jdbcType = TIMESTAMP})")
+    int insertSelective(StockOrder order);
+```
+
+这就是一个最基础的秒杀流程,主要所用到的是Redis缓存来抗大量的读请求+Kafka异步削峰+MYSQL乐观锁更新
+
+demo待实现的部分:(2019.10.15)
+
+1.Redis计数限流方法
+
+2.与Nginx整合
+
+
+
 
 #### 实现细节(未完成)
 
@@ -88,14 +259,6 @@ MYSQL: 持久化存储商品信息，实现数据的强一致性检验，同时�
 > 2. 用户请求预处理模块：判断商品是不是还有剩余来决定是不是要处理该请求。
 > 3. 用户请求处理模块：把通过预处理的请求封装成事务提交给数据库，并返回是否成功。
 > 4. 数据库接口模块：该模块是数据库的唯一接口，负责与数据库交互，提供RPC接口供查询是否秒杀结束、剩余数量等信息。
-
-
-##### Kafka Asynchronous
-
-Kafka 异步削峰 与 Redis耦合的示意图
-
-![img](https://raw.githubusercontent.com/gongfukangEE/gongfukangEE.github.io/master/_pic/%E5%88%86%E5%B8%83%E5%BC%8F/%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97%E7%BC%93%E5%86%B2.png)
-
 
 
 #### 解决数据安全问题
