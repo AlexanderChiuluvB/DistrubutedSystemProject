@@ -269,6 +269,31 @@ UPDATE table_name SET n=n-1 WHERE n>1;
 ```
 
 
+#### demo使用教程
+
+1.运行startApplication函数,可以在浏览器中打开,http://localhost:8080/swagger-ui.html#/ 进行你开发的restful api的测试
+2.打开Jmeter,模拟秒杀请求(http://jmeter.apache.org)
+
+* 新建线程组
+![](https://raw.githubusercontent.com/daydreamdev/MeetingFilm/master/pic/seconds-kill/1.png)
+
+
+* 修改线程数量,参数
+
+![](https://github.com/daydreamdev/MeetingFilm/raw/master/pic/seconds-kill/2.png)
+
+* 添加HTTP请求
+
+![](https://raw.githubusercontent.com/daydreamdev/MeetingFilm/master/pic/seconds-kill/3.png)
+
+* 增加http协议,服务器ip(本地测试填本地地址),路径填你开发的restful api名称
+![](https://github.com/daydreamdev/MeetingFilm/raw/master/pic/seconds-kill/4.png)
+
+* 汇总报告
+![](https://github.com/daydreamdev/MeetingFilm/raw/master/pic/seconds-kill/5.png)
+
+
+
 
 #### 技术栈(未完成)
 
