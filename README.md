@@ -299,6 +299,8 @@ UPDATE table_name SET n=n-1 WHERE n>1;
 * service层的api层,定义了具体函数逻辑的接口
 * service层的impl层,实现了上述定义的接口,是具体代码逻辑的实现地方
 
+4.在resources的application.yaml文件下修改集群的地址和端口
+
 
 #### 技术栈(未完成)
 
