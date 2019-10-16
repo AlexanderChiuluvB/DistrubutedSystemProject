@@ -246,10 +246,7 @@ Kafka消息队列异步削峰这两个拦截方法.
 
 1.整合Nginx反向代理,把大量的请求平摊到多个Nginx服务器
 
-2.可以再内存用ConcurrentHashMap设置商品是否已经卖完的标识,如果卖完了的话就没有必要访问redis了
-
-3.
-
+2.一开始订单来的时候,可以在内存用ConcurrentHashMap设置商品是否已经卖完的标识,如果卖完了的话就没有必要访问redis了
 
 
 
@@ -275,6 +272,7 @@ UPDATE table_name SET n=n-1 WHERE n>1;
 2.打开Jmeter,模拟秒杀请求(http://jmeter.apache.org)
 
 * 新建线程组
+
 ![](https://raw.githubusercontent.com/daydreamdev/MeetingFilm/master/pic/seconds-kill/1.png)
 
 
@@ -287,12 +285,19 @@ UPDATE table_name SET n=n-1 WHERE n>1;
 ![](https://raw.githubusercontent.com/daydreamdev/MeetingFilm/master/pic/seconds-kill/3.png)
 
 * 增加http协议,服务器ip(本地测试填本地地址),路径填你开发的restful api名称
+
 ![](https://github.com/daydreamdev/MeetingFilm/raw/master/pic/seconds-kill/4.png)
 
 * 汇总报告
+
 ![](https://github.com/daydreamdev/MeetingFilm/raw/master/pic/seconds-kill/5.png)
 
-
+3.
+* controller层定义了你开发的restfulapi,也是秒杀最基本的逻辑
+* dao层是数据访问接口,定义了与MYSQL语句相耦合的函数
+* pojo层是你定义的Java Beans类
+* service层的api层,定义了具体函数逻辑的接口
+* service层的impl层,实现了上述定义的接口,是具体代码逻辑的实现地方
 
 
 #### 技术栈(未完成)
