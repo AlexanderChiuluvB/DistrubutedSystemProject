@@ -1,4 +1,4 @@
-# DistrubutedSystemProject
+# DistributedSystemProject
 2019秋分布式系统
 ### 秒杀系统架构设计
 
