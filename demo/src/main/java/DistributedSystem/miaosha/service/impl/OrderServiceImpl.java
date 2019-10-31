@@ -32,7 +32,7 @@ public class OrderServiceImpl implements OrderService {
     @Autowired
     private KafkaTemplate<String, String> kafkaTemplate;
 
-    @Value("${spring.kafka.template.default-topic}")
+    @Value("mykafka")
     private String kafkaTopic;
 
     private Gson gson = new GsonBuilder().create();
