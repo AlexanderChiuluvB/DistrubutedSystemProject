@@ -174,8 +174,9 @@ private Stock checkStockWithRedis(int sid) {
 
 ```
 
-该语句可以返回结果并发更新MYSQL能否成功,如果成功则说明秒杀成功.可以调用StockWithRedis.updateStockWithRedis()方法,这个函数能够真正改变Redis的数据.这里利用了redis的原子操作decr和incr,数据库的库存还没有减少,属于**预减库存**.
-
+该语句可以返回结果并发更新MYSQL能否成功,如果成功则说明秒杀成功.然后调用StockWithRedis.updateStockWithRedis()方法更新redis.
+更新redis的是原子操作，即使失败了也会回滚。
+失败了也没关系，没必要保持MYSQL和Redis强一致性，即使Redis是脏数据，那么最后也会经过MYSQL的乐观锁来保证数据安全，不会超卖。
 ```
 public static void updateStockWithRedis(Stock stock) {
         Jedis jedis = null;
