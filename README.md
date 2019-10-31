@@ -133,8 +133,8 @@ private Stock checkStockWithRedis(int sid) {
 ```
  @Override
     public int createOrderAndSendToDB(Stock stock) throws Exception {
-        //TODO 乐观锁更新Redis
-        updateRedis(stock);
+        //TODO 乐观锁更新库存和Redis
+        updateMysqlAndRedis(stock);
         // 创建订单,更新MYSQL数据库
         int result = createOrder(stock);
         if (result == 1) {
@@ -147,11 +147,12 @@ private Stock checkStockWithRedis(int sid) {
 ```
 
 我们来看看updateRedis的逻辑实现
+先更新MYSQL，MYSQL更新成功了再去更新Redis
 
-```   private void updateRedis(Stock stock) {
-        int result = stockService.updateStockInRedis(stock);
+```   private void updateMysqlAndRedis(Stock stock) {
+        int result = stockService.updateStockInMYSQL(stock);
         if (result == 0) {
-            throw new RuntimeException("并发更新Redis失败");
+            throw new RuntimeException("并发更新MYSQL失败");
         }
         StockWithRedis.updateStockWithRedis(stock);
     }
