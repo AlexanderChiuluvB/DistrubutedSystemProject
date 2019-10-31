@@ -42,10 +42,23 @@ public class OrderServiceImpl implements OrderService {
         return stockOrderMapper.clearDB();
     }
 
+    /**
+     * 秒杀的请求
+     * @param sid stock id
+     */
+    @Override
+    public void checkRedisAndSendToKafka(int sid) {
+        //首先检查Redis(内存缓存)的库存
+        Stock stock = checkStockWithRedis(sid);
+        //下单请求发送到Kafka,序列化类
+        kafkaTemplate.send(kafkaTopic, gson.toJson(stock));
+        log.info("消息发送至Kafka成功");
+    }
+
     @Override
     public int createOrderAndSendToDB(Stock stock) throws Exception {
         //TODO 乐观锁更新库存和Redis
-        updateRedis(stock);
+        updateMysqlAndRedis(stock);
         int result = createOrder(stock);
         if (result == 1) {
             System.out.println("Kafka 消费成功");
@@ -53,16 +66,6 @@ public class OrderServiceImpl implements OrderService {
             System.out.println("Kafka 消费失败");
         }
         return result;
-    }
-
-    @Override
-    public void checkRedisAndSendToKafka(int sid) {
-
-        //TODO Redis校检库存
-        Stock stock = checkStockWithRedis(sid);
-        //下单请求发送到Kafka,序列化类
-        kafkaTemplate.send(kafkaTopic, gson.toJson(stock));
-        log.info("消息发送至Kafka成功");
     }
 
 
@@ -82,10 +85,10 @@ public class OrderServiceImpl implements OrderService {
         return result;
     }
 
-    private void updateRedis(Stock stock) {
-        int result = stockService.updateStockInRedis(stock);
+    private void updateMysqlAndRedis(Stock stock) {
+        int result = stockService.updateStockInMysql(stock);
         if (result == 0) {
-            throw new RuntimeException("并发更新Redis失败");
+            throw new RuntimeException("并发更新mysql失败");
         }
         StockWithRedis.updateStockWithRedis(stock);
     }

@@ -2,7 +2,6 @@ package DistributedSystem.miaosha.service.api;
 
 import DistributedSystem.miaosha.pojo.Stock;
 import org.apache.ibatis.annotations.Mapper;
-import org.springframework.stereotype.Repository;
 
 @Mapper
 public interface StockService {
@@ -31,7 +30,7 @@ public interface StockService {
     /**
      * 乐观锁更新库存，解决超卖问题
      */
-    int updateStockInRedis(Stock stock);
+    int updateStockInMysql(Stock stock);
 
     /**
      * 初始化数据库

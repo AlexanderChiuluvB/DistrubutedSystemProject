@@ -2,6 +2,9 @@ package DistributedSystem.miaosha.mysql;
 
 import java.sql.*;
 
+/**
+ * 此文件和项目无关 可以不用理会
+ */
 public class mysqlConnect {
     private static final String JDBC_DRIVER = "com.mysql.cj.jdbc.Driver";
     private static final String DB_URL
@@ -25,20 +28,11 @@ public class mysqlConnect {
             System.out.println(" 实例化Statement对象...");
             stmt = conn.createStatement();
             String sql;
-            sql = "SELECT id, name, url FROM websites";
+            sql = "SELECT * FROM stock";
             ResultSet rs = stmt.executeQuery(sql);
 
             // 展开结果集数据库
             while(rs.next()){
-                // 通过字段检索
-                int id  = rs.getInt("id");
-                String name = rs.getString("name");
-                String url = rs.getString("url");
-
-                // 输出数据
-                System.out.print("ID: " + id);
-                System.out.print(", 站点名称: " + name);
-                System.out.print(", 站点 URL: " + url);
                 System.out.print("\n");
             }
             // 完成后关闭
