@@ -2,4 +2,8 @@
 **/*.iml
 *.iml
 .idea
-
+/*.iml
+*.log
+**/*.log
+db
+**/target
