@@ -31,7 +31,7 @@ public class StockServiceImpl implements StockService {
     }
 
     @Override
-    public int updateStockInRedis(Stock stock) {
+    public int updateStockInMysql(Stock stock) {
         return stockMapper.updateByOptimistic(stock);
     }
 
