@@ -12,6 +12,7 @@ import java.util.Properties;
 public class kafkaUtil {
 
     private static final String kafkaPath = "kafka-properties.json";
+
     private static JsonObject getKafkaConfig(String name) throws FileNotFoundException {
         JsonParser parser = new JsonParser();
         JsonElement parse = parser.parse(new FileReader(kafkaPath));
