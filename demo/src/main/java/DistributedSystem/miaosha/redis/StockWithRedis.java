@@ -31,7 +31,7 @@ public class StockWithRedis {
         try {
             jedis = RedisPool.getJedis();
             Transaction transaction = jedis.multi();
-            //开始事物
+            //开始事务
             RedisPool.decr(STOCK_COUNT + stock.getCount());
             RedisPool.incr(STOCK_SALE + stock.getCount());
             RedisPool.incr(STOCK_VERSION + stock.getVersion());

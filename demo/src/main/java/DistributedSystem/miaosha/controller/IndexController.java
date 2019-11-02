@@ -11,12 +11,13 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
+
 import javax.servlet.http.HttpServletRequest;
 
 @Slf4j
 @Controller
 @RequestMapping(value = "/")
-@Api(value="接口", tags = "程序启动接口")
+@Api(value = "接口", tags = "程序启动接口")
 public class IndexController {
 
     private static final String success = "SUCCESS";
@@ -52,9 +53,9 @@ public class IndexController {
     @ApiOperation(value = "秒杀", notes = "秒杀")
     @RequestMapping(value = "createOrderWithLimitAndRedisAndKafka", method = RequestMethod.POST)
     @ResponseBody
-    public String createOrderWithLimitsAndRedisAndKafka(HttpServletRequest request ,int sid) {
+    public String createOrderWithLimitsAndRedisAndKafka(HttpServletRequest request, int sid) {
 
-        try{
+        try {
             orderService.checkRedisAndSendToKafka(sid);
         } catch (Exception e) {
             log.error("Exception:" + e);

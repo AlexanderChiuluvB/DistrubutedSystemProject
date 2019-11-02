@@ -1,6 +1,7 @@
 package DistributedSystem.miaosha.redis;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
@@ -20,7 +21,8 @@ public class RedisPool {
 
     private static Boolean testOnBorrow = true;
 
-    private static String redisIP = "106.13.170.3";
+    @Value("${spring.redis.ip}")
+    private static String redisIP;
 
     private static Integer redisPort = 6379;
 
