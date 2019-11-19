@@ -37,7 +37,7 @@ public class StockWithRedis {
             RedisPool.incr(STOCK_VERSION + stock.getVersion());
             transaction.exec();
         } catch (Exception e) {
-            log.error("updateStock fail", e);
+            System.out.printf("updateStock fail %s ", e);
             e.printStackTrace();
         }finally {
             RedisPool.jedisPoolClose(jedis);
@@ -59,7 +59,7 @@ public class StockWithRedis {
             // 结束事务
             List<Object> list = transaction.exec();
         } catch (Exception e) {
-            log.error("initRedis 获取 Jedis 实例失败：", e);
+            System.out.printf("initRedis 获取 Jedis 实例失败：", e);
         } finally {
             RedisPool.jedisPoolClose(jedis);
         }

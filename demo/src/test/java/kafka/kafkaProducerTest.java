@@ -117,7 +117,7 @@ public class kafkaProducerTest {
     private static Properties kafkaProps = new Properties();
 
     static {
-        kafkaProps.put("bootstrap.servers", "3.15.141.41:9092");
+        kafkaProps.put("bootstrap.servers", "172.101.8.2:9092,172.101.8.3:9092,172.101.8.4:9092");
         kafkaProps.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         kafkaProps.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
     }

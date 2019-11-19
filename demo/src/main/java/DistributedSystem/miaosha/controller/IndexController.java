@@ -6,6 +6,7 @@ import DistributedSystem.miaosha.service.api.StockService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -42,10 +43,10 @@ public class IndexController {
             res &= (orderService.delOrderDB() == 0 ? 1 : 0);
             StockWithRedis.initRedisBefore();
         } catch (Exception e) {
-            log.error("Exception: ", e);
+            System.out.printf("Exception: %s ", e);
         }
         if (res == 1) {
-            log.info("重置数据库和缓存成功");
+            System.out.println("重置数据库和缓存成功");
         }
         return res == 1 ? success : error;
     }
@@ -58,7 +59,7 @@ public class IndexController {
         try {
             orderService.checkRedisAndSendToKafka(sid);
         } catch (Exception e) {
-            log.error("Exception:" + e);
+            System.out.printf("Exception: %s ", e);
             e.printStackTrace();
         }
         return "秒杀请求正在处理,排队中";

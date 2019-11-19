@@ -52,7 +52,7 @@ public class OrderServiceImpl implements OrderService {
         Stock stock = checkStockWithRedis(sid);
         //下单请求发送到Kafka,序列化类
         kafkaTemplate.send(kafkaTopic, gson.toJson(stock));
-        log.info("消息发送至Kafka成功");
+        System.out.println("消息发送至Kafka成功");
     }
 
     @Override
@@ -99,7 +99,7 @@ public class OrderServiceImpl implements OrderService {
         Integer version = Integer.parseInt(RedisPool.get(StockWithRedis.STOCK_VERSION + sid));
         Integer sale = Integer.parseInt(RedisPool.get(StockWithRedis.STOCK_SALE + sid));
         if (count < 1) {
-            log.info("库存不足");
+            System.out.println("库存不足");
             throw new RuntimeException("库存不足 Redis currentCount: " + sale);
         }
         Stock stock = new Stock();
