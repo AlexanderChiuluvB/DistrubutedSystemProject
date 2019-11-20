@@ -126,7 +126,7 @@ public class kafkaConsumerTest {
         Map<TopicPartition, OffsetAndMetadata> currentOffsets = new HashMap<>();
         int count = 0;
         while (true) {
-            ConsumerRecords<String, String> records = consumer.poll(100);
+            ConsumerRecords<String, String> records = consumer.poll(1000);
             for (ConsumerRecord<String, String> record : records) {
                 System.out.printf("topic = %s, partition = %s, offset = %d," +
                                 "customer = %s, country = %s\n", record.topic(), record.partition(),
