@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import redis.clients.jedis.JedisCluster;
 
 
 import java.util.Date;
@@ -47,13 +48,33 @@ public class OrderServiceImpl implements OrderService {
      * @param sid stock id
      */
     @Override
-    public void checkRedisAndSendToKafka(int sid) {
+    public void checkRedisAndSendToKafka(Integer sid)throws Exception {
         //首先检查Redis(内存缓存)的库存
         Stock stock = checkStockWithRedis(sid);
         //下单请求发送到Kafka,序列化类
         kafkaTemplate.send(kafkaTopic, gson.toJson(stock));
         System.out.println("消息发送至Kafka成功");
     }
+
+    private Stock checkStockWithRedis(Integer sid) throws Exception{
+        JedisCluster jedis = RedisPool.getJedis();
+        Integer count = Integer.parseInt(jedis.get(StockWithRedis.STOCK_COUNT + sid));
+        Integer version = Integer.parseInt(jedis.get(StockWithRedis.STOCK_VERSION + sid));
+        Integer sale = Integer.parseInt(jedis.get(StockWithRedis.STOCK_SALE + sid));
+        if (count < 1) {
+            System.out.println("库存不足");
+            throw new RuntimeException("库存不足 Redis currentCount: " + sale);
+        }
+        Stock stock = new Stock();
+        stock.setId(sid);
+        stock.setCount(count);
+        stock.setSale(sale);
+        stock.setVersion(version);
+        // 此处应该是热更新，但是在数据库中只有一个商品，所以直接赋值
+        stock.setName("mobile phone");
+        return stock;
+    }
+
 
     @Override
     public int createOrderAndSendToDB(Stock stock) throws Exception {
@@ -68,16 +89,15 @@ public class OrderServiceImpl implements OrderService {
         return result;
     }
 
-
     /**
      * 创建持久化到数据库的订单
      */
     private int createOrder(Stock stock) {
 
         StockOrder order = new StockOrder();
-        order.setId(stock.getId());
         order.setCreateTime(new Date());
         order.setName(stock.getName());
+        order.setSid(stock.getId());
         int result = stockOrderMapper.insertToDB(order);
         if (result == 0) {
             throw new RuntimeException("创建订单失败");
@@ -85,32 +105,15 @@ public class OrderServiceImpl implements OrderService {
         return result;
     }
 
-    private void updateMysqlAndRedis(Stock stock) {
+    private void updateMysqlAndRedis(Stock stock) throws Exception{
+
         int result = stockService.updateStockInMysql(stock);
         if (result == 0) {
-            throw new RuntimeException("并发更新mysql失败");
+            throw new RuntimeException("concurrent update mysql failed");
         }
         StockWithRedis.updateStockWithRedis(stock);
     }
 
-    private Stock checkStockWithRedis(int sid) {
-
-        Integer count = Integer.parseInt(RedisPool.get(StockWithRedis.STOCK_COUNT + sid));
-        Integer version = Integer.parseInt(RedisPool.get(StockWithRedis.STOCK_VERSION + sid));
-        Integer sale = Integer.parseInt(RedisPool.get(StockWithRedis.STOCK_SALE + sid));
-        if (count < 1) {
-            System.out.println("库存不足");
-            throw new RuntimeException("库存不足 Redis currentCount: " + sale);
-        }
-        Stock stock = new Stock();
-        stock.setId(sid);
-        stock.setCount(count);
-        stock.setSale(sale);
-        stock.setVersion(version);
-        // 此处应该是热更新，但是在数据库中只有一个商品，所以直接赋值
-        stock.setName("mobile phone");
-        return stock;
-    }
 
 
 }

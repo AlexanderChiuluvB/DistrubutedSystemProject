@@ -18,7 +18,7 @@ public interface OrderService {
      * @param sid
      * @return
      */
-    void checkRedisAndSendToKafka(int sid) throws Exception;
+    void checkRedisAndSendToKafka(Integer sid) throws Exception;
 
     /**
      * kafka异步消费信息,更新数据库和Redis

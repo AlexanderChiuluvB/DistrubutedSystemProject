@@ -54,7 +54,7 @@ public class IndexController {
     @ApiOperation(value = "秒杀", notes = "秒杀")
     @RequestMapping(value = "createOrderWithLimitAndRedisAndKafka", method = RequestMethod.POST)
     @ResponseBody
-    public String createOrderWithLimitsAndRedisAndKafka(HttpServletRequest request, int sid) {
+    public String createOrderWithLimitsAndRedisAndKafka(HttpServletRequest request, Integer sid) {
 
         try {
             orderService.checkRedisAndSendToKafka(sid);
