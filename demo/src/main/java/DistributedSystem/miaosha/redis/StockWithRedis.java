@@ -1,6 +1,7 @@
 package DistributedSystem.miaosha.redis;
 
 import DistributedSystem.miaosha.pojo.Stock;
+import lombok.Synchronized;
 import lombok.extern.slf4j.Slf4j;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisCluster;
@@ -34,9 +35,11 @@ public class StockWithRedis {
             //Transaction transaction = jedis.multi();
             //TODO Jedis Cluster 不支持事务 可以考虑加锁
             //开始事务
+
             jedis.decr(STOCK_COUNT +  stock.getId());
             jedis.incr(STOCK_SALE +  stock.getId());
             jedis.incr(STOCK_VERSION +  stock.getId());
+
             //transaction.exec();
         } catch (Exception e) {
             System.out.printf("updateStock fail %s ", e);

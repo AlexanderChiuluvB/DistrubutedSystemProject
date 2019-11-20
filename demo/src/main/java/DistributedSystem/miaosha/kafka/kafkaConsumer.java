@@ -11,7 +11,7 @@ import java.util.Properties;
 
 public class kafkaConsumer {
 
-    private final static int minBatchSize = 20;
+    private final static int minBatchSize = 50;
 
     public static void commit(List<String> topics) throws FileNotFoundException {
 
