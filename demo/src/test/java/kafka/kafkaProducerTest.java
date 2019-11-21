@@ -125,7 +125,7 @@ public class kafkaProducerTest {
     private static KafkaProducer producer = new KafkaProducer<String, String>(kafkaProps);
 
     @Test
-    public void testKafkaProducer() throws FileNotFoundException {
+    public void testKafkaProducer() throws Exception {
         HashMap<String, String> mp = new HashMap<>();
         for (int i = 0; i < 500; i++) {
             mp.put("mykafka", "message-" + i);

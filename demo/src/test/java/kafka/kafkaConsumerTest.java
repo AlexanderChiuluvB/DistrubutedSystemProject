@@ -27,7 +27,7 @@ public class kafkaConsumerTest {
     public void consumerTest() throws FileNotFoundException {
         ArrayList<String> topics = new ArrayList<>();
         topics.add("mykafka");
-        kafkaConsumer.commit(topics);
+       // kafkaConsumer.commit(topics);
     }
 
     @Test

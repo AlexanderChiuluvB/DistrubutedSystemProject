@@ -1,20 +1,22 @@
 {
   "producer": {
-    "bootstrap.servers": "172.101.8.2:9092,172.101.8.3:9092,172.101.8.4:9092",
+    "bootstrap.servers": "172.101.8.2:9092,172.101.8.3:9092,172.101.8.4:9092,172.101.8.5:9092,172.101.8.6:9092,172.101.8.7:9092,172.101.8.8:9092,172.101.8.9:9092",
     "key.serializer": "org.apache.kafka.common.serialization.StringSerializer",
     "value.serializer": "org.apache.kafka.common.serialization.StringSerializer",
     "compression.type": "gzip",
     "max.request.size": "10485760",
-    "batch.size": "163840",
+    "batch.size": "1600",
     "buffer.memory": "536870912",
     "max.block.ms": "500",
     "retries": "3",
-    "acks": "1"
+    "acks": "0"
   },
   "consumer": {
-    "bootstrap.servers": "172.101.8.2:9092,172.101.8.3:9092,172.101.8.4:9092",
-    "group.id": "test222",
+    "bootstrap.servers": "172.101.8.2:9092,172.101.8.3:9092,172.101.8.4:9092,172.101.8.5:9092,172.101.8.6:9092,172.101.8.7:9092,172.101.8.8:9092,172.101.8.9:9092",
+    "group.id": "test-consumer-group",
     "session.timeout.ms": "30000",
+    "enable.auto.commit": "true",
+    "auto.commit.interval.ms": "50",
     "key.deserializer": "org.apache.kafka.common.serialization.StringDeserializer",
     "value.deserializer": "org.apache.kafka.common.serialization.StringDeserializer"
   }

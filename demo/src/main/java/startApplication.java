@@ -1,3 +1,4 @@
+import DistributedSystem.miaosha.util.SpringBeanFactory;
 import lombok.extern.slf4j.Slf4j;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
@@ -6,7 +7,7 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import springfox.documentation.swagger2.annotations.EnableSwagger2;
-
+import DistributedSystem.miaosha.kafka.kafkaConsumer;
 @Slf4j
 @EnableKafka
 @EnableTransactionManagement
@@ -16,9 +17,10 @@ import springfox.documentation.swagger2.annotations.EnableSwagger2;
 @MapperScan({"DistributedSystem.miaosha.dao"})
 @ComponentScan("DistributedSystem.miaosha.controller")
 public class startApplication {
-    public static void main(String[] args) {
-        SpringApplication.run(startApplication.class, args);
-        //TODO 开一个Consumer 线程
+    public static void main(String[] args) throws Exception{
 
+        SpringApplication.run(startApplication.class, args);
+        kafkaConsumer consumer = new kafkaConsumer(50);
+        consumer.execute();
     }
 }

@@ -49,7 +49,7 @@ public class StockWithRedis {
         }
     }
     /**
-     * 重置缓存
+     * 重置缓存 缓存预热
      */
     public static void initRedisBefore() throws Exception {
        JedisCluster jedis = null;
@@ -57,8 +57,8 @@ public class StockWithRedis {
             jedis = RedisPool.getJedis();
             // 开始事务
             //Transaction transaction = jedis.multi();
-            // 事务操作
-            jedis.set(STOCK_COUNT + 1, "50");
+
+            jedis.set(STOCK_COUNT + 1, "10");
             jedis.set(STOCK_SALE + 1, "0");
             jedis.set(STOCK_VERSION + 1, "0");
             // 结束事务

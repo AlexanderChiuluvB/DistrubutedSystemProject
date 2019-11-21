@@ -1,7 +1,6 @@
 package DistributedSystem.miaosha.service.impl;
 
 import DistributedSystem.miaosha.kafka.kafkaProducer;
-import DistributedSystem.miaosha.kafka.miaoshaConsumer;
 import DistributedSystem.miaosha.redis.RedisPool;
 import DistributedSystem.miaosha.redis.StockWithRedis;
 import DistributedSystem.miaosha.service.api.OrderService;
@@ -39,10 +38,12 @@ public class OrderServiceImpl implements OrderService {
     @Value("mykafka")
     private String kafkaTopic;
 
-    @Autowired
-    private miaoshaConsumer listener;
+    //@Autowired
+    //private miaoshaConsumer listener;
 
     private Gson gson = new GsonBuilder().create();
+
+    private Integer count = 0;
 
     @Override
     public int delOrderDB() {
@@ -58,11 +59,9 @@ public class OrderServiceImpl implements OrderService {
     public void checkRedisAndSendToKafka(Integer sid) throws Exception {
         //首先检查Redis(内存缓存)的库存
         Stock stock = checkStockWithRedis(sid);
-        JedisCluster jedis = RedisPool.getJedis();
-        Integer version = Integer.parseInt(jedis.get(StockWithRedis.STOCK_VERSION + stock.getId()));
         //下单请求发送到Kafka,序列化类
         //kafkaTemplate.send(kafkaTopic, gson.toJson(stock));
-        if (stock != null && stock.getVersion() >= version) {
+        if (stock != null ) {
             kafkaProducer.sendMessage(Collections.singletonMap(kafkaTopic, gson.toJson(stock)));
             System.out.println("消息发送至Kafka成功");
         } else {
@@ -74,13 +73,13 @@ public class OrderServiceImpl implements OrderService {
     private Stock checkStockWithRedis(Integer sid) {
         JedisCluster jedis = RedisPool.getJedis();
         Integer count = Integer.parseInt(jedis.get(StockWithRedis.STOCK_COUNT + sid));
-        Integer version = Integer.parseInt(jedis.get(StockWithRedis.STOCK_VERSION + sid));
-        Integer sale = Integer.parseInt(jedis.get(StockWithRedis.STOCK_SALE + sid));
         //System.out.printf("Current version is %d", version);
         if (count < 1) {
             System.out.println("库存不足，秒杀完成\n");
             return null;
         }
+        Integer version = Integer.parseInt(jedis.get(StockWithRedis.STOCK_VERSION + sid));
+        Integer sale = Integer.parseInt(jedis.get(StockWithRedis.STOCK_SALE + sid));
         Stock stock = new Stock();
         stock.setId(sid);
         stock.setCount(count);
@@ -132,6 +131,7 @@ public class OrderServiceImpl implements OrderService {
         JedisCluster jedis = RedisPool.getJedis();
         Integer version = Integer.parseInt(jedis.get(StockWithRedis.STOCK_VERSION + stock.getId()));
         int result = stockService.updateStockInMysql(stock);
+        //int result = stockService.updateStockInMysql(stock);
         if (result == 0) {
             // throw new RuntimeException("concurrent update mysql failed");
             //System.out.println("current version " + stock.getVersion());
