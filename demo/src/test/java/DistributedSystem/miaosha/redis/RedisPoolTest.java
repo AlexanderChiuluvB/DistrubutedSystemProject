@@ -1,6 +1,5 @@
 package DistributedSystem.miaosha.redis;
 
-import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Value;
 import redis.clients.jedis.*;
@@ -8,8 +7,6 @@ import redis.clients.jedis.*;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
-
-import static org.junit.Assert.*;
 
 public class RedisPoolTest {
 

@@ -18,5 +18,7 @@ import springfox.documentation.swagger2.annotations.EnableSwagger2;
 public class startApplication {
     public static void main(String[] args) {
         SpringApplication.run(startApplication.class, args);
+        //TODO 开一个Consumer 线程
+
     }
 }

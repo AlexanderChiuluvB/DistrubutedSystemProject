@@ -1,6 +1,7 @@
 package DistributedSystem.miaosha.service.impl;
 
 import DistributedSystem.miaosha.kafka.kafkaProducer;
+import DistributedSystem.miaosha.kafka.miaoshaConsumer;
 import DistributedSystem.miaosha.redis.RedisPool;
 import DistributedSystem.miaosha.redis.StockWithRedis;
 import DistributedSystem.miaosha.service.api.OrderService;
@@ -18,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 import redis.clients.jedis.JedisCluster;
 
 
-import javax.validation.constraints.Null;
 import java.util.Collections;
 import java.util.Date;
 
@@ -39,6 +39,9 @@ public class OrderServiceImpl implements OrderService {
     @Value("mykafka")
     private String kafkaTopic;
 
+    @Autowired
+    private miaoshaConsumer listener;
+
     private Gson gson = new GsonBuilder().create();
 
     @Override
@@ -48,33 +51,35 @@ public class OrderServiceImpl implements OrderService {
 
     /**
      * 秒杀的请求
+     *
      * @param sid stock id
      */
     @Override
-    public void checkRedisAndSendToKafka(Integer sid)throws Exception {
+    public void checkRedisAndSendToKafka(Integer sid) throws Exception {
         //首先检查Redis(内存缓存)的库存
         Stock stock = checkStockWithRedis(sid);
+        JedisCluster jedis = RedisPool.getJedis();
+        Integer version = Integer.parseInt(jedis.get(StockWithRedis.STOCK_VERSION + stock.getId()));
         //下单请求发送到Kafka,序列化类
         //kafkaTemplate.send(kafkaTopic, gson.toJson(stock));
-        if (stock!=null){
+        if (stock != null && stock.getVersion() >= version) {
             kafkaProducer.sendMessage(Collections.singletonMap(kafkaTopic, gson.toJson(stock)));
             System.out.println("消息发送至Kafka成功");
         } else {
-            System.out.println("消息发送至Kafka失败");
+            //System.out.println("消息发送至Kafka失败");
         }
 
     }
 
-    private Stock checkStockWithRedis(Integer sid){
+    private Stock checkStockWithRedis(Integer sid) {
         JedisCluster jedis = RedisPool.getJedis();
         Integer count = Integer.parseInt(jedis.get(StockWithRedis.STOCK_COUNT + sid));
         Integer version = Integer.parseInt(jedis.get(StockWithRedis.STOCK_VERSION + sid));
         Integer sale = Integer.parseInt(jedis.get(StockWithRedis.STOCK_SALE + sid));
-        System.out.printf("Current version is %d", version);
+        //System.out.printf("Current version is %d", version);
         if (count < 1) {
-            System.out.println("库存不足");
+            System.out.println("库存不足，秒杀完成\n");
             return null;
-            //throw new RuntimeException("库存不足 Redis currentCount: " + sale);
         }
         Stock stock = new Stock();
         stock.setId(sid);
@@ -89,16 +94,18 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public int createOrderAndSendToDB(Stock stock) throws Exception {
-        //TODO 乐观锁更新库存和Redis
         boolean updateResult = updateMysqlAndRedis(stock);
-        int createOrderResult =0;
-        if(updateResult){
+        int createOrderResult = 0;
+        if (updateResult) {
             createOrderResult = createOrder(stock);
+        }else{
+            return -1;
         }
-        if (createOrderResult== 1) {
+        if (createOrderResult == 1) {
+            System.out.printf("商品 %s has sold %d, remain %d\n", stock.getName(), stock.getSale(), stock.getCount());
             System.out.println("Kafka 消费成功");
         } else {
-            System.out.println("Kafka 消费失败");
+            //System.out.println("Kafka 消费失败");
             return -1;
         }
         return createOrderResult;
@@ -121,12 +128,16 @@ public class OrderServiceImpl implements OrderService {
         return result;
     }
 
-    private boolean updateMysqlAndRedis(Stock stock) throws Exception{
-
+    private boolean updateMysqlAndRedis(Stock stock) throws Exception {
+        JedisCluster jedis = RedisPool.getJedis();
+        Integer version = Integer.parseInt(jedis.get(StockWithRedis.STOCK_VERSION + stock.getId()));
         int result = stockService.updateStockInMysql(stock);
         if (result == 0) {
-           // throw new RuntimeException("concurrent update mysql failed");
+            // throw new RuntimeException("concurrent update mysql failed");
+            //System.out.println("current version " + stock.getVersion());
             System.out.println("并发更新mysql失败");
+            System.out.printf("current version saved in redis is %d\n", version);
+            System.out.printf("current version of the stock is %d\n", stock.getVersion());
             return false;
         }
         StockWithRedis.updateStockWithRedis(stock);

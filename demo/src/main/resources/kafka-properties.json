@@ -3,6 +3,7 @@
     "bootstrap.servers": "172.101.8.2:9092,172.101.8.3:9092,172.101.8.4:9092",
     "key.serializer": "org.apache.kafka.common.serialization.StringSerializer",
     "value.serializer": "org.apache.kafka.common.serialization.StringSerializer",
+    "compression.type": "gzip",
     "max.request.size": "10485760",
     "batch.size": "163840",
     "buffer.memory": "536870912",
