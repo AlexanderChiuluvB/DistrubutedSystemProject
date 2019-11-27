@@ -20,13 +20,14 @@ public class kafkaConsumeTask implements Runnable {
     private KafkaConsumer<String, String> consumer;
     private Gson gson;
     private OrderService orderService;
+    private final String topic = "mykafka";
 
     public kafkaConsumeTask(int partitionIdx) throws Exception{
         this.gson = SpringBeanFactory.getBean(Gson.class);
         this.orderService = SpringBeanFactory.getBean(OrderService.class);
         Properties props = kafkaUtil.getProperties("consumer");
         this.consumer = new KafkaConsumer<String, String>(props);
-        TopicPartition topicPartition = new TopicPartition("mykafka", partitionIdx);
+        TopicPartition topicPartition = new TopicPartition(topic, partitionIdx);
         consumer.assign(Arrays.asList(topicPartition));
         //consumer.subscribe(Arrays.asList("mykafka"));
     }

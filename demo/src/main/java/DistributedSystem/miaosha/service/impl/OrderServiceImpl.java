@@ -128,19 +128,18 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private boolean updateMysqlAndRedis(Stock stock) throws Exception {
-        JedisCluster jedis = RedisPool.getJedis();
-        Integer version = Integer.parseInt(jedis.get(StockWithRedis.STOCK_VERSION + stock.getId()));
+        //JedisCluster jedis = RedisPool.getJedis();
+        //Integer version = Integer.parseInt(jedis.get(StockWithRedis.STOCK_VERSION + stock.getId()));
         int result = stockService.updateStockInMysql(stock);
         //int result = stockService.updateStockInMysql(stock);
         if (result == 0) {
             // throw new RuntimeException("concurrent update mysql failed");
             //System.out.println("current version " + stock.getVersion());
             System.out.println("并发更新mysql失败");
-            System.out.printf("current version saved in redis is %d\n", version);
-            System.out.printf("current version of the stock is %d\n", stock.getVersion());
+            //System.out.printf("current version saved in redis is %d\n", version);
+            //System.out.printf("current version of the stock is %d\n", stock.getVersion());
             return false;
         }
-        StockWithRedis.updateStockWithRedis(stock);
-        return true;
+        return  StockWithRedis.updateStockWithRedis(stock);
     }
 }

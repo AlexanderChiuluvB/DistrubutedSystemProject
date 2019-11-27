@@ -22,7 +22,6 @@ public class kafkaConsumer {
                 .build();
         threadPool = new ThreadPoolExecutor(threadNum, threadNum, 0L, TimeUnit.MILLISECONDS, new
                 LinkedBlockingDeque<Runnable>(1024), threadFactory, new ThreadPoolExecutor.AbortPolicy());
-
         consumeTaskList = new ArrayList<kafkaConsumeTask>(threadNum);
 
         for(int i=0;i<threadNum;i++){

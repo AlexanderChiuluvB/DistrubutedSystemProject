@@ -7,6 +7,7 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisCluster;
 import redis.clients.jedis.Transaction;
 
+import javax.xml.stream.FactoryConfigurationError;
 import java.util.List;
 
 @Slf4j
@@ -28,24 +29,22 @@ public class StockWithRedis {
     public final static String STOCK_VERSION = "stock_version_";
 
 
-    public static void updateStockWithRedis(Stock stock) throws Exception {
+    public static boolean updateStockWithRedis(Stock stock) throws Exception {
         JedisCluster jedis = null;
         try {
             jedis = RedisPool.getJedis();
             //Transaction transaction = jedis.multi();
             //TODO Jedis Cluster 不支持事务 可以考虑加锁
             //开始事务
-
             jedis.decr(STOCK_COUNT +  stock.getId());
             jedis.incr(STOCK_SALE +  stock.getId());
             jedis.incr(STOCK_VERSION +  stock.getId());
-
             //transaction.exec();
+            return true;
         } catch (Exception e) {
             System.out.printf("updateStock fail %s ", e);
             e.printStackTrace();
-        }finally {
-          //  RedisPool.jedisPoolClose(jedis);
+            return false;
         }
     }
     /**
