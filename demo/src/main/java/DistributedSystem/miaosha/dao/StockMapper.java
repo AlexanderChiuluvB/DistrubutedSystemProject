@@ -15,7 +15,7 @@ public interface StockMapper {
     /**
      * 初始化 DB
      */
-    @Update("UPDATE stock SET count = 50, sale = 0, version = 0")
+    @Update("UPDATE stock SET count = 10, sale = 0, version = 0")
     int initDBBefore();
 
     @Select("SELECT * FROM stock WHERE id = #{id, jdbcType = INTEGER}")

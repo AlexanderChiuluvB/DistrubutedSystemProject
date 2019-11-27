@@ -6,9 +6,9 @@ import java.sql.*;
  * 此文件和项目无关 可以不用理会
  */
 public class mysqlConnect {
-    private static final String JDBC_DRIVER = "com.mysql.cj.jdbc.Driver";
+    private static final String JDBC_DRIVER = "com.mysql.jdbc.Driver";
     private static final String DB_URL
-            = "jdbc:mysql://106.13.170.3:3306/miaosha?allowPublicKeyRetrieval=true";
+            = "jdbc:mysql://172.101.8.8:3306/miaosha";
 
     private static final String USER = "root";
     private static final String PASS = "123456";
