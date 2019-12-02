@@ -2,12 +2,34 @@ package DistributedSystem.miaosha.redis;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import redis.clients.jedis.*;
 
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+
+class TokenBucket{
+    private Integer tokens=500;
+    private static Integer maxTokens=5000;
+
+    public synchronized Integer getToken(){
+        return tokens;
+    }
+
+    synchronized void incrToken(){
+        if(tokens<maxTokens)
+            ++tokens;
+    }
+
+    synchronized boolean decrToken(){
+        if(tokens<=0)
+            return false;
+        --tokens;
+        return true;
+    }
+}
 
 @Component
 @Slf4j
@@ -18,6 +40,7 @@ public class RedisPool {
     private static Integer maxIdle = 100;
     private static Integer maxWait = 10000;
     private static Boolean testOnBorrow = true;
+    private static TokenBucket bucket= new TokenBucket();
     static {
         initCluster();
     }
@@ -47,6 +70,16 @@ public class RedisPool {
         if (jedis != null) {
             jedis.close();
         }
+    }
+
+    // 每5ms，令牌桶中令牌增加一个，可以根据服务器处理能力进行调整
+    @Scheduled(fixedRate = 5)
+    private static void incrTokenBucket()throws Exception{
+        bucket.incrToken();
+    }
+
+    public static boolean acquireToken()throws Exception{
+        return bucket.decrToken();
     }
 
     public static String set(String key, String value) throws Exception {

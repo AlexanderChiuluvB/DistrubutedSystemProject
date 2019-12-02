@@ -57,6 +57,8 @@ public class IndexController {
     public String createOrderWithLimitsAndRedisAndKafka(HttpServletRequest request, Integer sid) {
 
         try {
+            if(!orderService.acquireTokenFromRedisBucket(sid))
+                return "秒杀失败";
             orderService.checkRedisAndSendToKafka(sid);
         } catch (Exception e) {
             System.out.printf("Exception: %s ", e);
