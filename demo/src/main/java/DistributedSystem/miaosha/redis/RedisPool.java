@@ -24,19 +24,19 @@ public class RedisPool {
 
     private static void initCluster() {
         Set<HostAndPort> nodes = new HashSet<>();
-        nodes.add(new HostAndPort("172.101.8.7", 8005));
-        nodes.add(new HostAndPort("172.101.8.6", 8004));
-        nodes.add(new HostAndPort("172.101.8.4", 8003));
-        nodes.add(new HostAndPort("172.101.8.8", 8006));
-        nodes.add(new HostAndPort("172.101.8.3", 8002));
-        nodes.add(new HostAndPort("172.101.8.2", 8001));
+        nodes.add(new HostAndPort("10.141.212.22?", 8006));
+        nodes.add(new HostAndPort("10.141.212.227", 8005));
+        nodes.add(new HostAndPort("10.141.212.226", 8004));
+        nodes.add(new HostAndPort("10.141.212.225", 8003));
+        nodes.add(new HostAndPort("10.141.212.224", 8002));
+        nodes.add(new HostAndPort("10.141.212.223", 8001));
         JedisPoolConfig config = new JedisPoolConfig();
         config.setMaxTotal(maxTotal);
         config.setMaxIdle(maxIdle);
         config.setTestOnBorrow(testOnBorrow);
         config.setBlockWhenExhausted(true);
         config.setMaxWaitMillis(maxWait);
-        cluster = new JedisCluster(nodes, 2000, 2000, 100, "123456", config);
+        cluster = new JedisCluster(nodes, 2000, 2000, 100, config);
     }
 
     public static JedisCluster getJedis() {
