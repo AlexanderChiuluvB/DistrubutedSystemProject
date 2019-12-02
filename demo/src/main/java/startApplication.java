@@ -1,4 +1,3 @@
-import DistributedSystem.miaosha.util.SpringBeanFactory;
 import lombok.extern.slf4j.Slf4j;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
@@ -13,14 +12,14 @@ import DistributedSystem.miaosha.kafka.kafkaConsumer;
 @EnableTransactionManagement
 @EnableAutoConfiguration
 @EnableSwagger2
-@ComponentScan("DistributedSystem.miaosha")
 @MapperScan({"DistributedSystem.miaosha.dao"})
+@ComponentScan("DistributedSystem.miaosha")
 @ComponentScan("DistributedSystem.miaosha.controller")
 public class startApplication {
     public static void main(String[] args) throws Exception{
 
         SpringApplication.run(startApplication.class, args);
-        kafkaConsumer consumer = new kafkaConsumer(50);
+        kafkaConsumer consumer = new kafkaConsumer(5);
         consumer.execute();
     }
 }
