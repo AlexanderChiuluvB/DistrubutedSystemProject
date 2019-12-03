@@ -1,33 +1,35 @@
 package kafka;
-
 import DistributedSystem.miaosha.kafka.kafkaConsumer;
+import DistributedSystem.miaosha.kafka.kafkaUtil;
+import DistributedSystem.miaosha.service.api.OrderService;
+import DistributedSystem.miaosha.util.SpringBeanFactory;
+import com.google.gson.Gson;
 import org.apache.kafka.clients.consumer.*;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
+import org.apache.tomcat.jni.Time;
 import org.junit.Test;
 import org.springframework.data.redis.listener.Topic;
 
 import java.io.FileNotFoundException;
 import java.util.*;
-
+import java.util.concurrent.*;
 
 public class kafkaConsumerTest {
     private static Properties kafkaProps = new Properties();
 
     static {
-        kafkaProps.put("bootstrap.servers", "172.101.8.2:9092,172.101.8.3:9092,172.101.8.4:9092");
+        kafkaProps.put("bootstrap.servers", "172.101.8.2:9092,172.101.8.3:9092,172.101.8.4:9092,172.101.8.5:9092,172.101.8.6:9092");
         kafkaProps.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
         kafkaProps.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
         kafkaProps.put("group.id", "ConsumerGroup");
     }
-
     private KafkaConsumer<String, String> consumer = new KafkaConsumer<String, String>(kafkaProps);
-
     @Test
     public void consumerTest() throws FileNotFoundException {
         ArrayList<String> topics = new ArrayList<>();
-        topics.add("mykafka");
-       // kafkaConsumer.commit(topics);
+        topics.add("test");
+        // kafkaConsumer.commit(topics);
     }
 
     @Test
@@ -35,6 +37,8 @@ public class kafkaConsumerTest {
         consumer.subscribe(Collections.singletonList("mykafka"));
         //支持正则表达式
         //consumer.subscribe(Collections.singletonList("test.*"));
+        int count = 0;
+
         try {
             while (true) {
                 ConsumerRecords<String, String> records = consumer.poll(100);
@@ -74,7 +78,8 @@ public class kafkaConsumerTest {
     public void consumerAsyncCommitTest() {
         consumer.subscribe(Collections.singletonList("mykafka"));
         while (true) {
-            ConsumerRecords<String, String> records = consumer.poll(100);
+            ConsumerRecords<String, String> records = consumer.poll(1000);
+            System.out.println("fetch:" +records.count());
             for (ConsumerRecord<String, String> record : records) {
                 System.out.printf("topic = %s, partition = %s, offset = %d," +
                                 "customer = %s, country = %s\n", record.topic(), record.partition(),
@@ -125,9 +130,15 @@ public class kafkaConsumerTest {
         consumer.subscribe(Collections.singletonList("mykafka"));
         Map<TopicPartition, OffsetAndMetadata> currentOffsets = new HashMap<>();
         int count = 0;
+        long startTime=System.currentTimeMillis();
         while (true) {
             ConsumerRecords<String, String> records = consumer.poll(1000);
             for (ConsumerRecord<String, String> record : records) {
+                long endTime=System.currentTimeMillis();
+                count++;
+                if(count%1000==0){
+                    System.out.printf("Time for consuming 1000 records %d" ,endTime-startTime);
+                }
                 System.out.printf("topic = %s, partition = %s, offset = %d," +
                                 "customer = %s, country = %s\n", record.topic(), record.partition(),
                         record.offset(), record.key(), record.value());
@@ -141,6 +152,32 @@ public class kafkaConsumerTest {
         }
     }
 
+    private class consumerTask implements Runnable{
+
+        private int i;
+
+        public consumerTask(int idx){
+            this.i = idx;
+        }
+
+        @Override
+        public void run() {
+            while(true) {
+                TopicPartition topicPartition = new TopicPartition("mykafka", i);
+                consumer.assign(Arrays.asList(topicPartition));
+                ConsumerRecords<String, String> records = consumer.poll(200);
+                for(ConsumerRecord<String, String> record : records) {
+                    try {
+                        System.out.printf("thread = %s, offset = %d, key = %s, partition = %s, " +
+                                        "value = %s \n", Thread.currentThread().getName(),
+                                record.offset(), record.key(), record.partition(), record.value());
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+    }
     @Test
     public void consumerWithRebalanceListener() {
 
