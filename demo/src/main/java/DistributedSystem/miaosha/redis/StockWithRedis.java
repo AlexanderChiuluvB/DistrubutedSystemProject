@@ -32,13 +32,14 @@ public class StockWithRedis {
     public static boolean updateStockWithRedis(Stock stock) throws Exception {
         JedisCluster jedis = null;
         try {
+            Integer id = stock.getId();
             jedis = RedisPool.getJedis();
             //Transaction transaction = jedis.multi();
             //TODO Jedis Cluster 不支持事务 可以考虑加锁
             //开始事务
-            jedis.decr(STOCK_COUNT +  stock.getId());
-            jedis.incr(STOCK_SALE +  stock.getId());
-            jedis.incr(STOCK_VERSION +  stock.getId());
+            jedis.decr(STOCK_COUNT +  id);
+            jedis.incr(STOCK_SALE +  id);
+            jedis.incr(STOCK_VERSION +  id);
             //transaction.exec();
             return true;
         } catch (Exception e) {
