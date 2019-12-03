@@ -13,6 +13,11 @@ public interface OrderService {
     int delOrderDB();
 
     /**
+     * 令牌桶算法限流
+     */
+    boolean acquireTokenFromRedisBucket(Integer sid)throws Exception;
+
+    /**
      * 检查redis库存然后发送下单消息给kafka
      *
      * @param sid

@@ -51,6 +51,11 @@ public class OrderServiceImpl implements OrderService {
         return stockOrderMapper.clearDB();
     }
 
+    @Override
+    public boolean acquireTokenFromRedisBucket(Integer sid) throws Exception {
+        return RedisPool.acquireToken();
+    }
+
     /**
      * 秒杀的请求
      *
