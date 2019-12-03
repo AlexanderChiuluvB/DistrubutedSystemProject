@@ -19,6 +19,7 @@ public class kafkaConsumeTask implements Runnable {
     private OrderService orderService;
     private final String topic = "mykafka";
 
+
     public kafkaConsumeTask(int partitionIdx) throws Exception{
         this.gson = SpringBeanFactory.getBean(Gson.class);
         this.orderService = SpringBeanFactory.getBean(OrderService.class);

@@ -17,11 +17,13 @@ import org.springframework.kafka.annotation.TopicPartition;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.listener.AbstractMessageListenerContainer;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
 
-/*
+
 @Slf4j
 @Component
 @EnableKafka
@@ -33,13 +35,14 @@ public class miaoshaConsumer {
     private OrderService orderService;
 
     @Bean
-    KafkaListenerContainerFactory<?>batchFactory() {
+    KafkaListenerContainerFactory<?> batchFactory() {
         ConcurrentKafkaListenerContainerFactory<String, String> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(new DefaultKafkaConsumerFactory<>(consumerConfigs()));
         factory.setBatchListener(true);
-        factory.setConcurrency(6);
+        factory.setConcurrency(100);
         factory.setAutoStartup(true);
+        factory.getContainerProperties().setAckMode(AbstractMessageListenerContainer.AckMode.MANUAL_IMMEDIATE);
         return factory;
     }
 
@@ -48,11 +51,12 @@ public class miaoshaConsumer {
 
         Map<String, Object> props = new HashMap<>();
         props.put(ConsumerConfig.GROUP_ID_CONFIG, "test-consumer-group");
-        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "172.101.8.2:9092,172.101.8.3:9092,172.101.8.4:9092");
-        props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 5); //设置每次接收Message的数量
-        props.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, 5);
-        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);
-        props.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, 5);
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "172.101.8.2:9092,172.101.8.3:9092,172.101.8.4:9092,172.101.8.5:9092,172.101.8.6:9092");
+        props.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, 100000); //设置每次接收Message的数量
+        props.put(ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG, 110000);
+        props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 150);
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
+        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         return props;
@@ -63,29 +67,34 @@ public class miaoshaConsumer {
         return new KafkaProperties.Listener();
     }
 
-*/
-/*
-    @KafkaListener(containerFactory = "batchFactory",group = "test-consumer-group",topicPartitions = { @TopicPartition(topic = "mykafka", partitions = { "0" })})
-    public void listen0(List<ConsumerRecord<String, String>> records) throws Exception {
+    @KafkaListener(containerFactory = "batchFactory", group = "test-consumer-group", topics={"mykafka"})
+    public void listen(List<ConsumerRecord<String, String>> records, Acknowledgment ack) throws Exception {
 
-        for (ConsumerRecord<?, ?> record : records) {
-            Optional<?> kafkaMessage = Optional.ofNullable(record.value());
-            // 获取消息
-            //序列化 object -> String
-            String message = (String) kafkaMessage.get();
-            //System.out.println(message);
+        try {
+            for (ConsumerRecord<?, ?> record : records) {
+                Optional<?> kafkaMessage = Optional.ofNullable(record.value());
+                // 获取消息
+                //序列化 object -> String
+                String message = (String) kafkaMessage.get();
+                //System.out.println(message);
 
-            //TODO 反序列化
-            //Class object = gson.fromJson((String)message, Class.class)
-            Stock stock = gson.fromJson((String) message, Stock.class);
+                //TODO 反序列化
+                //Class object = gson.fromJson((String)message, Class.class)
+                Stock stock = gson.fromJson((String) message, Stock.class);
 
-            orderService.createOrderAndSendToDB(stock);
+                orderService.createOrderAndSendToDB(stock);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            ack.acknowledge();
         }
+
     }
+}
 
 
-
-
+/*
     @KafkaListener(containerFactory = "batchFactory",group = "test-consumer-group",topicPartitions = { @TopicPartition(topic = "mykafka", partitions = { "1" })})
     public void listen1(List<ConsumerRecord<String, String>> records) throws Exception {
 
