@@ -47,19 +47,19 @@ public class RedisPool {
 
     private static void initCluster() {
         Set<HostAndPort> nodes = new HashSet<>();
-        nodes.add(new HostAndPort("10.141.212.22?", 8006));
-        nodes.add(new HostAndPort("10.141.212.227", 8005));
-        nodes.add(new HostAndPort("10.141.212.226", 8004));
-        nodes.add(new HostAndPort("10.141.212.225", 8003));
-        nodes.add(new HostAndPort("10.141.212.224", 8002));
-        nodes.add(new HostAndPort("10.141.212.223", 8001));
+        nodes.add(new HostAndPort("172.101.8.7", 8006));
+        nodes.add(new HostAndPort("172.101.8.6", 8005));
+        nodes.add(new HostAndPort("172.101.8.5", 8004));
+        nodes.add(new HostAndPort("172.101.8.4", 8003));
+        nodes.add(new HostAndPort("172.101.8.3", 8002));
+        nodes.add(new HostAndPort("172.101.8.2", 8001));
         JedisPoolConfig config = new JedisPoolConfig();
         config.setMaxTotal(maxTotal);
         config.setMaxIdle(maxIdle);
         config.setTestOnBorrow(testOnBorrow);
         config.setBlockWhenExhausted(true);
         config.setMaxWaitMillis(maxWait);
-        cluster = new JedisCluster(nodes, 2000, 2000, 100, config);
+        cluster = new JedisCluster(nodes, 2000, 2000, 100, "123456",config);
     }
 
     public static JedisCluster getJedis() {
@@ -74,11 +74,11 @@ public class RedisPool {
 
     // 每5ms，令牌桶中令牌增加一个，可以根据服务器处理能力进行调整
     @Scheduled(fixedRate = 5)
-    private static void incrTokenBucket()throws Exception{
+    private static void incrTokenBucket(){
         bucket.incrToken();
     }
 
-    public static boolean acquireToken()throws Exception{
+    public static boolean acquireToken(){
         return bucket.decrToken();
     }
 
