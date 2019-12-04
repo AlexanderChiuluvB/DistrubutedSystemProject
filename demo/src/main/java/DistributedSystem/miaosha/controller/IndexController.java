@@ -33,20 +33,23 @@ public class IndexController {
     @ApiOperation(value = "初始化数据库", notes = "初始化数据库")
     @RequestMapping(value = "initDBAndRedis", method = RequestMethod.POST)
     @ResponseBody
-    public String initDBAndRedisBefore(HttpServletRequest request) {
+    public String initDBAndRedisBefore(HttpServletRequest request, int sid, int count) {
 
         int res = 0;
         try {
-            // 初始化库存信息
-            res = stockService.initDBBefore();
+            // 初始化Mysql库存信息
+            res = stockService.initDBBefore(sid, count);
             // 清空订单表
             res &= (orderService.delOrderDB() == 0 ? 1 : 0);
-            StockWithRedis.initRedisBefore();
+            // 初始化Redis库存信息
+            res = StockWithRedis.initRedisBefore(sid, count);
         } catch (Exception e) {
             System.out.printf("Exception: %s ", e);
         }
         if (res == 1) {
             System.out.println("重置数据库和缓存成功");
+        } else{
+            System.out.println("重置失败");
         }
         return res == 1 ? success : error;
     }
@@ -66,4 +69,32 @@ public class IndexController {
         }
         return "秒杀请求正在处理,排队中";
     }
+
+    @ApiOperation(value = "查询库存", notes = "查询库存")
+    @RequestMapping(value = "checkStock", method = RequestMethod.POST)
+    @ResponseBody
+    public int checkStock(HttpServletRequest request, Integer sid) {
+
+        try {
+            return stockService.getStockCount(sid);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return -1;
+        }
+    }
+
+    @ApiOperation(value = "入库", notes = "入库")
+    @RequestMapping(value = "insertStock", method = RequestMethod.POST)
+    @ResponseBody
+    public int insertStock(HttpServletRequest request, Integer id, Integer count, String name) {
+
+        try {
+            return stockService.createStock(id,count,name);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return -1;
+        }
+    }
+
+
 }

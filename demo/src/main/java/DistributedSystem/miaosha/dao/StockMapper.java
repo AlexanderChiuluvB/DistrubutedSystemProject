@@ -1,10 +1,7 @@
 package DistributedSystem.miaosha.dao;
 
 import DistributedSystem.miaosha.pojo.Stock;
-import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Select;
-import org.apache.ibatis.annotations.Update;
+import org.apache.ibatis.annotations.*;
 import org.springframework.stereotype.Repository;
 
 
@@ -15,8 +12,13 @@ public interface StockMapper {
     /**
      * 初始化 DB
      */
-    @Update("UPDATE stock SET count = 10, sale = 0, version = 0")
-    int initDBBefore();
+    @Update("UPDATE stock SET count = #{count, jdbcType = INTEGER}, sale = 0, version = 0 " +
+            "WHERE id = #{id, jdbcType = INTEGER}")
+    int initDBBefore(@Param("id") int id, @Param("count")int count);
+
+    @Insert(("INSERT INTO stock (id, name, count, sale, version) VALUES " +
+            "(#{id, jdbcType = INTEGER}, #{name, jdbcType = INTEGER}, #{count, jdbcType = INTEGER}, 0, 0)"))
+    int createStock(@Param("id") int id, @Param("count") int count, @Param("name") String name);
 
     @Select("SELECT * FROM stock WHERE id = #{id, jdbcType = INTEGER}")
     Stock selectByPrimaryKey(@Param("id") int id);

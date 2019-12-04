@@ -35,5 +35,10 @@ public interface StockService {
     /**
      * 初始化数据库
      */
-    int initDBBefore();
+    int initDBBefore(int id, int count);
+
+
+    int createStock(int id, int count, String name);
+
+
 }
