@@ -24,7 +24,7 @@ public class kafkaConsumer {
                 LinkedBlockingDeque<Runnable>(1024), threadFactory, new ThreadPoolExecutor.AbortPolicy());
         consumeTaskList = new ArrayList<kafkaConsumeTask>(threadNum);
 
-        for(int i=0;i<threadNum;i++){
+        for(int i=0;i<threadNum;i++) {
             kafkaConsumeTask consumeTask = new kafkaConsumeTask(i);
             consumeTaskList.add(consumeTask);
         }
@@ -35,6 +35,4 @@ public class kafkaConsumer {
             threadPool.submit(task);
         }
     }
-
-
 }

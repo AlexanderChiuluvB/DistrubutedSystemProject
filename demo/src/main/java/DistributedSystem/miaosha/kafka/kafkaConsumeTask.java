@@ -9,9 +9,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
-
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.Properties;
@@ -22,6 +19,7 @@ public class kafkaConsumeTask implements Runnable {
     private OrderService orderService;
     private final String topic = "mykafka";
 
+
     public kafkaConsumeTask(int partitionIdx) throws Exception{
         this.gson = SpringBeanFactory.getBean(Gson.class);
         this.orderService = SpringBeanFactory.getBean(OrderService.class);
@@ -29,7 +27,6 @@ public class kafkaConsumeTask implements Runnable {
         this.consumer = new KafkaConsumer<String, String>(props);
         TopicPartition topicPartition = new TopicPartition(topic, partitionIdx);
         consumer.assign(Arrays.asList(topicPartition));
-        //consumer.subscribe(Arrays.asList("mykafka"));
     }
 
     @Override

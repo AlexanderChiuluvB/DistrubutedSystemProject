@@ -1,6 +1,7 @@
 package DistributedSystem.miaosha.service.impl;
 
 import DistributedSystem.miaosha.kafka.kafkaProducer;
+import DistributedSystem.miaosha.kafka.miaoshaConsumer;
 import DistributedSystem.miaosha.redis.RedisPool;
 import DistributedSystem.miaosha.redis.StockWithRedis;
 import DistributedSystem.miaosha.service.api.OrderService;
@@ -38,8 +39,8 @@ public class OrderServiceImpl implements OrderService {
     @Value("mykafka")
     private String kafkaTopic;
 
-    //@Autowired
-    //private miaoshaConsumer listener;
+    @Autowired
+    private miaoshaConsumer listener;
 
     private Gson gson = new GsonBuilder().create();
 
@@ -78,7 +79,6 @@ public class OrderServiceImpl implements OrderService {
     private Stock checkStockWithRedis(Integer sid) {
         JedisCluster jedis = RedisPool.getJedis();
         Integer count = Integer.parseInt(jedis.get(StockWithRedis.STOCK_COUNT + sid));
-        //System.out.printf("Current version is %d", version);
         if (count < 1) {
             System.out.println("库存不足，秒杀完成\n");
             return null;
@@ -90,7 +90,6 @@ public class OrderServiceImpl implements OrderService {
         stock.setCount(count);
         stock.setSale(sale);
         stock.setVersion(version);
-        // 此处应该是热更新，但是在数据库中只有一个商品，所以直接赋值
         stock.setName("mobile phone");
         return stock;
     }
@@ -99,11 +98,11 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public int createOrderAndSendToDB(Stock stock) throws Exception {
         boolean updateResult = updateMysqlAndRedis(stock);
-        int createOrderResult = 0;
+        int createOrderResult = -1;
         if (updateResult) {
             createOrderResult = createOrder(stock);
         }else{
-            return -1;
+            return createOrderResult;
         }
         if (createOrderResult == 1) {
             System.out.printf("商品 %s has sold %d, remain %d\n", stock.getName(), stock.getSale(), stock.getCount());
@@ -135,6 +134,7 @@ public class OrderServiceImpl implements OrderService {
     private boolean updateMysqlAndRedis(Stock stock) throws Exception {
         //JedisCluster jedis = RedisPool.getJedis();
         //Integer version = Integer.parseInt(jedis.get(StockWithRedis.STOCK_VERSION + stock.getId()));
+        System.out.println(stock.getVersion());
         int result = stockService.updateStockInMysql(stock);
         //int result = stockService.updateStockInMysql(stock);
         if (result == 0) {

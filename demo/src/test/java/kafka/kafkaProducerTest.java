@@ -8,14 +8,11 @@ import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.record.InvalidRecordException;
 import org.apache.kafka.common.serialization.Serializer;
 import org.apache.kafka.common.utils.Utils;
+import org.apache.tomcat.jni.Time;
 import org.junit.Test;
-
-import java.io.FileNotFoundException;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
+import java.util.concurrent.*;
 
 class Customer {
 
@@ -112,12 +109,11 @@ class MyPartitioner implements Partitioner {
     }
 }
 
-
 public class kafkaProducerTest {
     private static Properties kafkaProps = new Properties();
 
     static {
-        kafkaProps.put("bootstrap.servers", "172.101.8.2:9092,172.101.8.3:9092,172.101.8.4:9092");
+        kafkaProps.put("bootstrap.servers", "172.101.8.2:9092,172.101.8.3:9092,172.101.8.4:9092,172.101.8.5:9092,172.101.8.6:9092");
         kafkaProps.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         kafkaProps.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
     }
@@ -127,9 +123,12 @@ public class kafkaProducerTest {
     @Test
     public void testKafkaProducer() throws Exception {
         HashMap<String, String> mp = new HashMap<>();
-        for (int i = 0; i < 500; i++) {
-            mp.put("mykafka", "message-" + i);
-            kafkaProducer.sendMessage(mp);
+        ExecutorService executorService = new ThreadPoolExecutor(5, 5, 0,
+                TimeUnit.SECONDS, new ArrayBlockingQueue<>(512), new ThreadPoolExecutor.DiscardPolicy());
+        while (true) {
+            int i = 0;
+            kafkaProducer.sendMessage(Collections.singletonMap("mykafka", "message-" + i));
+            i += 1;
         }
     }
 
@@ -146,7 +145,7 @@ public class kafkaProducerTest {
 
     @Test
     public void ProducerAsyncSendTest() {
-        while(true) {
+        while (true) {
             ProducerRecord<String, String> record = new ProducerRecord<>("mykafka", "Country", "China");
             try {
                 //要调用Future对象的get方法，使得发送客户端等待服务器的响应
@@ -160,6 +159,48 @@ public class kafkaProducerTest {
                 e.printStackTrace();
             }
         }
-
     }
+
+
+    private class produceTask implements Runnable {
+        private int index;
+
+        public produceTask(int i) {
+            this.index = i;
+        }
+
+        @Override
+        public void run() {
+            try {
+                while (true) {
+                    ProducerRecord<String, String> record = new ProducerRecord<>("mykafka", this.index, "country", "china");
+                    try {
+                        Object response = producer.send(record, new Callback() {
+                            @Override
+                            public void onCompletion(RecordMetadata recordMetadata, Exception e) {
+                                System.out.println(recordMetadata.partition());
+                            }
+                        }).get();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    @Test
+    public void MultiThreadProducerTest() {
+        Random r = new Random(1);
+        ExecutorService pool = new ThreadPoolExecutor(5, 5, 0, TimeUnit.SECONDS,
+                new ArrayBlockingQueue<Runnable>(1024),new ThreadPoolExecutor.DiscardPolicy());
+        while (true) {
+            int i = r.nextInt(5);
+            produceTask task = new produceTask(i);
+            pool.submit(task);
+        }
+    }
+
 }
