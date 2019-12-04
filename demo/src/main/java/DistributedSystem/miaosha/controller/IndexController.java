@@ -39,17 +39,27 @@ public class IndexController {
         try {
             // 初始化Mysql库存信息
             res = stockService.initDBBefore(sid, count);
+            if (res != 1) {
+                return "Mysql更新失败";
+            }
+
             // 清空订单表
-            res &= (orderService.delOrderDB() == 0 ? 1 : 0);
+            res = (orderService.delOrderDB() == 0 ? 1 : 0);
+            if (res != 1) {
+                return "清空订单表失败";
+            }
+
             // 初始化Redis库存信息
             res = StockWithRedis.initRedisBefore(sid, count);
+            if (res != 1) {
+                return "初始化Redis失败";
+            }
+
         } catch (Exception e) {
             System.out.printf("Exception: %s ", e);
         }
         if (res == 1) {
             System.out.println("重置数据库和缓存成功");
-        } else{
-            System.out.println("重置失败");
         }
         return res == 1 ? success : error;
     }
@@ -60,7 +70,7 @@ public class IndexController {
     public String createOrderWithLimitsAndRedisAndKafka(HttpServletRequest request, Integer sid) {
 
         try {
-            if(!orderService.acquireTokenFromRedisBucket(sid))
+            if (!orderService.acquireTokenFromRedisBucket(sid))
                 return "秒杀失败";
             orderService.checkRedisAndSendToKafka(sid);
         } catch (Exception e) {
@@ -89,7 +99,7 @@ public class IndexController {
     public int insertStock(HttpServletRequest request, Integer id, Integer count, String name) {
 
         try {
-            return stockService.createStock(id,count,name);
+            return stockService.createStock(id, count, name);
         } catch (Exception e) {
             e.printStackTrace();
             return -1;
