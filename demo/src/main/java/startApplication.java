@@ -20,7 +20,6 @@ import DistributedSystem.miaosha.kafka.kafkaConsumer;
 @ComponentScan("DistributedSystem.miaosha.controller")
 public class startApplication {
     public static void main(String[] args) throws Exception{
-
         SpringApplication.run(startApplication.class, args);
         //kafkaConsumer consumer = new kafkaConsumer(100);
         //consumer.execute();

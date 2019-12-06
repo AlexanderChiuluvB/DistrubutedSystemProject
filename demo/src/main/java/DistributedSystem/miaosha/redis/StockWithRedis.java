@@ -51,21 +51,22 @@ public class StockWithRedis {
     /**
      * 重置缓存 缓存预热
      */
-    public static void initRedisBefore() throws Exception {
+    public static int initRedisBefore(int id, int count) throws Exception {
        JedisCluster jedis = null;
         try {
             jedis = RedisPool.getJedis();
             // 开始事务
+            // TODO Redis集群不支持事务
             //Transaction transaction = jedis.multi();
-
-            jedis.set(STOCK_COUNT + 1, "10");
-            jedis.set(STOCK_SALE + 1, "0");
-            jedis.set(STOCK_VERSION + 1, "0");
+            jedis.set(STOCK_COUNT + id, String.valueOf(count));
+            jedis.set(STOCK_SALE + id, "0");
+            jedis.set(STOCK_VERSION + id, "0");
             // 结束事务
             //List<Object> list = transaction.exec();
+            return 1;
         } catch (Exception e) {
             System.out.println("initRedis 获取 Jedis 实例失败："+ e);
-        } finally {
+            return 0;
         }
     }
 

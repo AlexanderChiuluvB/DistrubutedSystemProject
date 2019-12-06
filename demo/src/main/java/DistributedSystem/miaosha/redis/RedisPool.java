@@ -12,7 +12,7 @@ import java.util.Set;
 
 class TokenBucket{
     private Integer tokens=500;
-    private static Integer maxTokens=5000;
+    private static Integer maxTokens = 5000;
 
     public synchronized Integer getToken(){
         return tokens;
@@ -73,7 +73,7 @@ public class RedisPool {
     }
 
     // 每5ms，令牌桶中令牌增加一个，可以根据服务器处理能力进行调整
-    @Scheduled(fixedRate = 5)
+    @Scheduled(fixedRate = 1)
     private static void incrTokenBucket(){
         bucket.incrToken();
     }

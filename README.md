@@ -252,25 +252,9 @@ Kafka消息队列异步削峰这两个拦截方法.
 
 
 
-
-#### 解决数据安全问题
-
-防止超卖，即售出数量>库存数量
-
-1.Redis自带的乐观锁机制，用版本号更新
-
-> 实现的流程为：这个数据所有请求都有资格去修改，但会获得一个该数据的版本号，只有版本号符合的才能更新成功，其他的返回抢购失败。 
-
-2.从SQL入手
-
-```sql
-UPDATE table_name SET n=n-1 WHERE n>1; 
-```
-
-
 #### demo使用教程
 
-1.运行startApplication函数,可以在浏览器中打开,http://localhost:8080/swagger-ui.html#/ 进行你开发的restful api的测试
+1.运行startApplication函数,可以在浏览器中打开,http://localhost:8088/swagger-ui.html#/ 进行你开发的restful api的测试
 2.打开Jmeter,模拟秒杀请求(http://jmeter.apache.org)
 
 * 新建线程组
@@ -332,8 +316,6 @@ CREATE TABLE `stock_order` (
   建议使用　IntelliJ Idea 2019.3 企业版
 
 - 项目框架: Spring Boot
-
-- RPC通信框架　Apache dubbo
 
 - 消息队列 Kafka
 

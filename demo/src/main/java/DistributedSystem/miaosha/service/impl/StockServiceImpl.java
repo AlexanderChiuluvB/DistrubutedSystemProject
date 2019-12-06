@@ -36,7 +36,12 @@ public class StockServiceImpl implements StockService {
     }
 
     @Override
-    public int initDBBefore() {
-        return stockMapper.initDBBefore();
+    public int initDBBefore(int id, int count) {
+        return stockMapper.initDBBefore(id, count);
     }
+    @Override
+    public int createStock(int id, int count, String name) {
+        return stockMapper.createStock(id, count, name);
+    }
+
 }
