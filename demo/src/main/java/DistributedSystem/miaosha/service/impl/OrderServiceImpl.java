@@ -13,7 +13,6 @@ import com.google.gson.GsonBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import redis.clients.jedis.JedisCluster;
@@ -33,8 +32,8 @@ public class OrderServiceImpl implements OrderService {
     @Autowired
     private StockOrderMapper stockOrderMapper;
 
-    @Autowired
-    private KafkaTemplate<String, String> kafkaTemplate;
+    //@Autowired
+    //private KafkaTemplate<String, String> kafkaTemplate;
 
     @Value("mykafka")
     private String kafkaTopic;
@@ -44,15 +43,13 @@ public class OrderServiceImpl implements OrderService {
 
     private Gson gson = new GsonBuilder().create();
 
-    private Integer count = 0;
-
     @Override
     public int delOrderDB() {
         return stockOrderMapper.clearDB();
     }
 
     @Override
-    public boolean acquireTokenFromRedisBucket(Integer sid) throws Exception {
+    public boolean acquireTokenFromRedisBucket(Integer sid) {
         return RedisPool.acquireToken();
     }
 
@@ -67,11 +64,9 @@ public class OrderServiceImpl implements OrderService {
         Stock stock = checkStockWithRedis(sid);
         //下单请求发送到Kafka,序列化类
         //kafkaTemplate.send(kafkaTopic, gson.toJson(stock));
-        if (stock != null ) {
+        if (stock != null) {
             kafkaProducer.sendMessage(Collections.singletonMap(kafkaTopic, gson.toJson(stock)));
             System.out.println("消息发送至Kafka成功");
-        } else {
-            //System.out.println("消息发送至Kafka失败");
         }
 
     }
@@ -90,7 +85,7 @@ public class OrderServiceImpl implements OrderService {
         stock.setCount(count);
         stock.setSale(sale);
         stock.setVersion(version);
-        stock.setName("mobile phone");
+        stock.setName(stockService.getStockById(sid).getName());
         return stock;
     }
 
@@ -101,7 +96,7 @@ public class OrderServiceImpl implements OrderService {
         int createOrderResult = -1;
         if (updateResult) {
             createOrderResult = createOrder(stock);
-        }else{
+        } else {
             return createOrderResult;
         }
         if (createOrderResult == 1) {
@@ -134,7 +129,7 @@ public class OrderServiceImpl implements OrderService {
     private boolean updateMysqlAndRedis(Stock stock) throws Exception {
         //JedisCluster jedis = RedisPool.getJedis();
         //Integer version = Integer.parseInt(jedis.get(StockWithRedis.STOCK_VERSION + stock.getId()));
-        System.out.println(stock.getVersion());
+        // System.out.println(stock.getVersion());
         int result = stockService.updateStockInMysql(stock);
         //int result = stockService.updateStockInMysql(stock);
         if (result == 0) {
@@ -145,6 +140,6 @@ public class OrderServiceImpl implements OrderService {
             //System.out.printf("current version of the stock is %d\n", stock.getVersion());
             return false;
         }
-        return  StockWithRedis.updateStockWithRedis(stock);
+        return StockWithRedis.updateStockWithRedis(stock);
     }
 }
