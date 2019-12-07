@@ -17,21 +17,21 @@ public class kafkaConsumer {
 
     private List<kafkaConsumeTask> consumeTaskList;
 
-    public kafkaConsumer(int threadNum) throws Exception{
+    public kafkaConsumer(int threadNum) throws Exception {
         ThreadFactory threadFactory = new ThreadFactoryBuilder()
                 .build();
         threadPool = new ThreadPoolExecutor(threadNum, threadNum, 0L, TimeUnit.MILLISECONDS, new
                 LinkedBlockingDeque<Runnable>(1024), threadFactory, new ThreadPoolExecutor.AbortPolicy());
         consumeTaskList = new ArrayList<kafkaConsumeTask>(threadNum);
 
-        for(int i=0;i<threadNum;i++) {
+        for (int i = 0; i < threadNum; i++) {
             kafkaConsumeTask consumeTask = new kafkaConsumeTask(i);
             consumeTaskList.add(consumeTask);
         }
     }
 
     public void execute() {
-        for(kafkaConsumeTask task:consumeTaskList) {
+        for (kafkaConsumeTask task : consumeTaskList) {
             threadPool.submit(task);
         }
     }

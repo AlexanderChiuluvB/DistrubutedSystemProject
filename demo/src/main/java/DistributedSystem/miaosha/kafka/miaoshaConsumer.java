@@ -29,6 +29,7 @@ import java.util.*;
 public class miaoshaConsumer {
 
     private Gson gson = new GsonBuilder().create();
+    private static final String topic = "miaosha";
 
     @Autowired
     private OrderService orderService;
@@ -51,9 +52,9 @@ public class miaoshaConsumer {
         Map<String, Object> props = new HashMap<>();
         props.put(ConsumerConfig.GROUP_ID_CONFIG, "test-consumer-group");
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "172.101.8.2:9092,172.101.8.3:9092,172.101.8.4:9092,172.101.8.5:9092,172.101.8.6:9092");
-        props.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, 100000); //设置每次接收Message的数量
-        props.put(ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG, 110000);
-        props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 150);
+        //props.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, 10000);
+       // props.put(ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG, 11000);
+        //props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 100);//设置每次接收Message的数量
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
@@ -66,7 +67,7 @@ public class miaoshaConsumer {
         return new KafkaProperties.Listener();
     }
 
-    @KafkaListener(containerFactory = "batchFactory", group = "test-consumer-group", topics={"mykafka"})
+    @KafkaListener(containerFactory = "batchFactory", group = "test-consumer-group", topics={topic})
     public void listen(List<ConsumerRecord<String, String>> records, Acknowledgment ack) throws Exception {
 
         try {
@@ -76,11 +77,10 @@ public class miaoshaConsumer {
                 //序列化 object -> String
                 String message = (String) kafkaMessage.get();
                 //System.out.println(message);
-
+                System.out.println(message);
                 //TODO 反序列化
                 //Class object = gson.fromJson((String)message, Class.class)
                 Stock stock = gson.fromJson((String) message, Stock.class);
-
                 orderService.createOrderAndSendToDB(stock);
             }
         } catch (Exception e) {

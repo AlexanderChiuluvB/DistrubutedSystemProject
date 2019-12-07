@@ -31,7 +31,7 @@ public class StockServiceImpl implements StockService {
 
     @Override
     public int updateStockInMysql(Stock stock) {
-        return stockMapper.updateByOptimistic(stock);
+        return stockMapper.updateByPrimaryKeySelective(stock);
     }
 
     @Override

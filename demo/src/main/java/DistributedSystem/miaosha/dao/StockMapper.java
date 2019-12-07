@@ -23,9 +23,8 @@ public interface StockMapper {
     @Select("SELECT * FROM stock WHERE id = #{id, jdbcType = INTEGER}")
     Stock selectByPrimaryKey(@Param("id") int id);
 
-    @Update("UPDATE stock SET count = #{count, jdbcType = INTEGER}, name = #{name, jdbcType = VARCHAR}, " +
-            "sale = #{sale,jdbcType = INTEGER},version = #{version,jdbcType = INTEGER} " +
-            "WHERE id = #{id, jdbcType = INTEGER}")
+    @Update("UPDATE stock SET count = count - 1, sale = sale +1 "+
+            "WHERE id = #{id, jdbcType = INTEGER} and count > 0")
     int updateByPrimaryKeySelective(Stock stock);
     /**
      * 乐观锁 version

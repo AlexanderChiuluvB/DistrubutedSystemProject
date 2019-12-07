@@ -8,7 +8,6 @@ import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.record.InvalidRecordException;
 import org.apache.kafka.common.serialization.Serializer;
 import org.apache.kafka.common.utils.Utils;
-import org.apache.tomcat.jni.Time;
 import org.junit.Test;
 import java.nio.ByteBuffer;
 import java.util.*;
@@ -127,7 +126,7 @@ public class kafkaProducerTest {
                 TimeUnit.SECONDS, new ArrayBlockingQueue<>(512), new ThreadPoolExecutor.DiscardPolicy());
         while (true) {
             int i = 0;
-            kafkaProducer.sendMessage(Collections.singletonMap("mykafka", "message-" + i));
+            kafkaProducer.sendMessage(Collections.singletonMap("miaosha", "message-" + i));
             i += 1;
         }
     }

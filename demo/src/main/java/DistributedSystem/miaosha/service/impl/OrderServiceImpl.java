@@ -13,6 +13,7 @@ import com.google.gson.GsonBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import redis.clients.jedis.JedisCluster;
@@ -21,10 +22,16 @@ import redis.clients.jedis.JedisCluster;
 import java.util.Collections;
 import java.util.Date;
 
+import static DistributedSystem.miaosha.redis.RedisPool.initCluster;
+
 @Slf4j
 @Transactional(rollbackFor = Exception.class)
 @Service(value = "OrderService")
 public class OrderServiceImpl implements OrderService {
+
+    private final String STOCK_LOCK_KEY = "stock_lock_key_";
+
+    private final String STOCK_LOCK_VALUE = "stock_lock_value_";
 
     @Autowired
     private StockServiceImpl stockService;
@@ -32,14 +39,14 @@ public class OrderServiceImpl implements OrderService {
     @Autowired
     private StockOrderMapper stockOrderMapper;
 
-    //@Autowired
-    //private KafkaTemplate<String, String> kafkaTemplate;
+    @Autowired
+    private KafkaTemplate<String, String> kafkaTemplate;
 
-    @Value("mykafka")
+    @Value("miaosha")
     private String kafkaTopic;
 
     @Autowired
-    private miaoshaConsumer listener;
+    private static miaoshaConsumer listener;
 
     private Gson gson = new GsonBuilder().create();
 
@@ -72,21 +79,42 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private Stock checkStockWithRedis(Integer sid) {
-        JedisCluster jedis = RedisPool.getJedis();
-        Integer count = Integer.parseInt(jedis.get(StockWithRedis.STOCK_COUNT + sid));
+        JedisCluster jedis = initCluster();
+        boolean updateResult = false;
+
+        //TODO 非线程安全,尝试加锁?
+        Integer count;
+        Integer version;
+        Integer sale;
+        count = Integer.parseInt(jedis.get(StockWithRedis.STOCK_COUNT + sid));
+        version = Integer.parseInt(jedis.get(StockWithRedis.STOCK_VERSION + sid));
+        sale = Integer.parseInt(jedis.get(StockWithRedis.STOCK_SALE + sid));
+
         if (count < 1) {
             System.out.println("库存不足，秒杀完成\n");
             return null;
         }
-        Integer version = Integer.parseInt(jedis.get(StockWithRedis.STOCK_VERSION + sid));
-        Integer sale = Integer.parseInt(jedis.get(StockWithRedis.STOCK_SALE + sid));
+        try {
+            updateResult = StockWithRedis.updateStockWithRedis(sid);
+            if(!updateResult){
+                System.out.println("更新Redis失败");
+                return null;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        System.out.printf("count %d, version %d\n", count, version);
         Stock stock = new Stock();
         stock.setId(sid);
         stock.setCount(count);
         stock.setSale(sale);
         stock.setVersion(version);
         stock.setName(stockService.getStockById(sid).getName());
-        return stock;
+        if (updateResult) {
+            return stock;
+        } else {
+            return null;
+        }
     }
 
 
@@ -130,16 +158,19 @@ public class OrderServiceImpl implements OrderService {
         //JedisCluster jedis = RedisPool.getJedis();
         //Integer version = Integer.parseInt(jedis.get(StockWithRedis.STOCK_VERSION + stock.getId()));
         // System.out.println(stock.getVersion());
+        // TODO Kafka到达顺序不是有序的,因此弃用版本号机制更新
+        // TODO 稍微改了下更新的语句
         int result = stockService.updateStockInMysql(stock);
-        //int result = stockService.updateStockInMysql(stock);
-        if (result == 0) {
-            // throw new RuntimeException("concurrent update mysql failed");
-            //System.out.println("current version " + stock.getVersion());
-            System.out.println("并发更新mysql失败");
-            //System.out.printf("current version saved in redis is %d\n", version);
-            //System.out.printf("current version of the stock is %d\n", stock.getVersion());
-            return false;
+        if (result==1) {
+            System.out.println("更新成功");
         }
-        return StockWithRedis.updateStockWithRedis(stock);
+        //int result = stockService.updateStockInMysql(stock);
+        // throw new RuntimeException("concurrent update mysql failed");
+        //System.out.println("current version " + stock.getVersion());
+        //System.out.println("并发更新mysql失败");
+        //System.out.printf("current version saved in redis is %d\n", version);
+        //System.out.printf("current version of the stock is %d\n", stock.getVersion());
+        return result != 0;
+        //return StockWithRedis.updateStockWithRedis(stock);
     }
 }
