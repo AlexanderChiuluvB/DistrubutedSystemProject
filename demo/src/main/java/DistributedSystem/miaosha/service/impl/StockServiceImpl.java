@@ -7,7 +7,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 
-
 @Service(value = "StockService")
 public class StockServiceImpl implements StockService {
 
@@ -39,6 +38,7 @@ public class StockServiceImpl implements StockService {
     public int initDBBefore(int id, int count) {
         return stockMapper.initDBBefore(id, count);
     }
+
     @Override
     public int createStock(int id, int count, String name) {
         return stockMapper.createStock(id, count, name);

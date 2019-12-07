@@ -7,7 +7,7 @@ import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import springfox.documentation.swagger2.annotations.EnableSwagger2;
-import DistributedSystem.miaosha.kafka.kafkaConsumer;
+
 @Slf4j
 @EnableKafka
 @EnableTransactionManagement
