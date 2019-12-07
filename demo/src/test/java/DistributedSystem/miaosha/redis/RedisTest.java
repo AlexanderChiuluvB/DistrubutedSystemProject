@@ -4,9 +4,14 @@ package DistributedSystem.miaosha.redis;
 import org.redisson.Redisson;
 import org.redisson.api.RedissonClient;
 import org.redisson.config.Config;
+import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisCluster;
+import redis.clients.jedis.JedisPoolConfig;
 
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 public class RedisTest {
     private static final Long RELEASE_SUCCESS=1L;
@@ -15,9 +20,7 @@ public class RedisTest {
     private static final String SET_WITH_EXPIRE_TIME="PX";
 
     public static void main(String[] args){
-        Integer i=0;
-        test(i);
-        System.out.println(i);
+
 //        Config config=new Config();
 //        config.useClusterServers()
 //                .setScanInterval(2000) // 集群状态扫描间隔时间，单位是毫秒
@@ -31,26 +34,22 @@ public class RedisTest {
 //
 //        RedissonClient redisson = Redisson.create(config);
 //
-//        Jedis jedis = new Jedis("localhost",6379);
-//        jedis.set("Test","1");
+        Set<HostAndPort> nodes = new HashSet<>();
+        nodes.add(new HostAndPort("172.101.8.7", 8006));
+        nodes.add(new HostAndPort("172.101.8.6", 8005));
+        nodes.add(new HostAndPort("172.101.8.5", 8004));
+        nodes.add(new HostAndPort("172.101.8.4", 8003));
+        nodes.add(new HostAndPort("172.101.8.3", 8002));
+        nodes.add(new HostAndPort("172.101.8.2", 8001));
+        JedisPoolConfig config = new JedisPoolConfig();
+        JedisCluster jedis = new JedisCluster(nodes, 2000, 2000, 100, "123456", config);
+        jedis.set("test","1");
+        jedis.set("test2","hhh");
+        System.out.println(jedis.hkeys("*"));
 //        boolean result=tryGetDistributedLock(jedis,"TestLock","123",500);
 //        System.out.println(result);
 //        result=releaseDistributedLock(jedis,"TestLock","123");
 //        System.out.println(result);
     }
 
-    public static void test(Integer i){
-        i=1;
-    }
-
-    public static boolean tryGetDistributedLock(Jedis jedis, String lockKey, String requestId, int expireTime) {
-        String result = jedis.set(lockKey, requestId, SET_IF_NOT_EXIST, SET_WITH_EXPIRE_TIME, expireTime);
-        return LOCK_SUCCESS.equals(result);
-    }
-
-    public static boolean releaseDistributedLock(Jedis jedis, String lockKey, String requestId) {
-        String script = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end";
-        Object result = jedis.eval(script, Collections.singletonList(lockKey), Collections.singletonList(requestId));
-        return RELEASE_SUCCESS.equals(result);
-    }
 }

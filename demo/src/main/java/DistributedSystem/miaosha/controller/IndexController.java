@@ -55,6 +55,9 @@ public class IndexController {
                 return "初始化Redis失败";
             }
 
+            // 初始化服务器本地拥有的库存和buffer库存的数量
+            StockWithRedis.initServerBefore(sid,count);
+
         } catch (Exception e) {
             System.out.printf("Exception: %s ", e);
         }

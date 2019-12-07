@@ -69,6 +69,12 @@ public class RedisPool {
         cluster = new JedisCluster(nodes, 2000, 2000, 100, "123456",config);
     }
 
+    public static void addStockEntry(int sid, int stock){
+        serverStocks.put(sid,(int)(stock*0.16));
+        serverStocks.put(sid,(int)(stock*0.05));
+    }
+
+
     public static JedisCluster getJedis() {
         return cluster;
     }
@@ -94,7 +100,7 @@ public class RedisPool {
         return -1;
     }
 
-    //本地更新库存后，再申请Redis的库存
+    //本地更新库存后，申请Redis的库存
     public static boolean redisDecrStock(Integer sid, Stock s) throws Exception {
         boolean locked=false;
         String requestId=UUID.randomUUID().toString();
