@@ -36,14 +36,13 @@ public class StockWithRedis {
             //Integer id = stock.getId();
             JedisCluster jedis = initCluster();
             //Transaction transaction = jedis.multi();
-            //TODO Jedis Cluster 不支持事务 可以考虑加锁
             //开始事务
             if (RedisPool.tryLock(STOCK_LOCK_KEY + id, STOCK_LOCK_VALUE + id, 1000 * 100, 1000 * 20)) {
                 try {
                     System.out.println("执行Redis事务");
                     jedis.decr(STOCK_COUNT + id);
                     jedis.incr(STOCK_SALE + id);
-                    jedis.incr(STOCK_VERSION + id);
+                    //jedis.incr(STOCK_VERSION + id);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }finally {
@@ -74,7 +73,7 @@ public class StockWithRedis {
             //Transaction transaction = jedis.multi();
             jedis.set(STOCK_COUNT + id, String.valueOf(count));
             jedis.set(STOCK_SALE + id, "0");
-            jedis.set(STOCK_VERSION + id, "0");
+            //jedis.set(STOCK_VERSION + id, "0");
             //jedis.del(STOCK_LOCK_KEY + id, STOCK_LOCK_VALUE + id);
             // 结束事务
             //List<Object> list = transaction.exec();
