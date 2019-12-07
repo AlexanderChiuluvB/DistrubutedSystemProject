@@ -40,14 +40,6 @@ public class Stock {
         Sale = sale;
     }
 
-    public Integer getVersion() {
-        return Version;
-    }
-
-    public void setVersion(Integer version) {
-        Version = version;
-    }
-
     private Integer Id;
 
     private String Name;

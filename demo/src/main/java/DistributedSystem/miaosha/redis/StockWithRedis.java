@@ -24,31 +24,6 @@ public class StockWithRedis {
     public final static String STOCK_SALE = "stock_sale_";
 
     /**
-     * 版本号
-     */
-    public final static String STOCK_VERSION = "stock_version_";
-
-
-    public static boolean updateStockWithRedis(Stock stock) throws Exception {
-        JedisCluster jedis = null;
-        try {
-            Integer id = stock.getId();
-            jedis = RedisPool.getJedis();
-            //Transaction transaction = jedis.multi();
-            //TODO Jedis Cluster 不支持事务 可以考虑加锁
-            //开始事务
-            jedis.decr(STOCK_COUNT +  id);
-            jedis.incr(STOCK_SALE +  id);
-            jedis.incr(STOCK_VERSION +  id);
-            //transaction.exec();
-            return true;
-        } catch (Exception e) {
-            System.out.printf("updateStock fail %s ", e);
-            e.printStackTrace();
-            return false;
-        }
-    }
-    /**
      * 重置缓存 缓存预热
      */
     public static int initRedisBefore(int id, int count) throws Exception {
@@ -60,7 +35,6 @@ public class StockWithRedis {
             //Transaction transaction = jedis.multi();
             jedis.set(STOCK_COUNT + id, String.valueOf(count));
             jedis.set(STOCK_SALE + id, "0");
-            jedis.set(STOCK_VERSION + id, "0");
             // 结束事务
             //List<Object> list = transaction.exec();
             return 1;

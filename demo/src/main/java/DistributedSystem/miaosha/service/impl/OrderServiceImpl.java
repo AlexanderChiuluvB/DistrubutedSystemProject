@@ -71,20 +71,20 @@ public class OrderServiceImpl implements OrderService {
 
     }
 
-    private Stock checkStockWithRedis(Integer sid) {
-        JedisCluster jedis = RedisPool.getJedis();
-        Integer count = Integer.parseInt(jedis.get(StockWithRedis.STOCK_COUNT + sid));
-        if (count < 1) {
-            System.out.println("库存不足，秒杀完成\n");
+    private Stock checkStockWithRedis(Integer sid) throws Exception {
+        Integer localResult=RedisPool.localDecrStock(sid);
+        if(localResult==-1){
+            System.out.println("本服务器内库存不足，秒杀失败\n");
             return null;
         }
-        Integer version = Integer.parseInt(jedis.get(StockWithRedis.STOCK_VERSION + sid));
-        Integer sale = Integer.parseInt(jedis.get(StockWithRedis.STOCK_SALE + sid));
         Stock stock = new Stock();
-        stock.setId(sid);
-        stock.setCount(count);
-        stock.setSale(sale);
-        stock.setVersion(version);
+        boolean redisResult=RedisPool.redisDecrStock(sid,stock);
+        if(!redisResult){
+            RedisPool.localDecrStockRecover(sid,localResult);
+            System.out.println("商品"+sid+"已无库存，秒杀失败");
+            return null;
+        }
+
         stock.setName(stockService.getStockById(sid).getName());
         return stock;
     }
@@ -92,20 +92,19 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public int createOrderAndSendToDB(Stock stock) throws Exception {
-        boolean updateResult = updateMysqlAndRedis(stock);
+        boolean updateResult = updateMysql(stock);
         int createOrderResult = -1;
+
         if (updateResult) {
             createOrderResult = createOrder(stock);
-        } else {
-            return createOrderResult;
         }
+        else return createOrderResult;
+
         if (createOrderResult == 1) {
             System.out.printf("商品 %s has sold %d, remain %d\n", stock.getName(), stock.getSale(), stock.getCount());
             System.out.println("Kafka 消费成功");
-        } else {
-            //System.out.println("Kafka 消费失败");
-            return -1;
         }
+        else return -1;
         return createOrderResult;
     }
 
@@ -126,20 +125,12 @@ public class OrderServiceImpl implements OrderService {
         return result;
     }
 
-    private boolean updateMysqlAndRedis(Stock stock) throws Exception {
-        //JedisCluster jedis = RedisPool.getJedis();
-        //Integer version = Integer.parseInt(jedis.get(StockWithRedis.STOCK_VERSION + stock.getId()));
-        // System.out.println(stock.getVersion());
+    private boolean updateMysql(Stock stock) throws Exception {
         int result = stockService.updateStockInMysql(stock);
-        //int result = stockService.updateStockInMysql(stock);
         if (result == 0) {
-            // throw new RuntimeException("concurrent update mysql failed");
-            //System.out.println("current version " + stock.getVersion());
-            System.out.println("并发更新mysql失败");
-            //System.out.printf("current version saved in redis is %d\n", version);
-            //System.out.printf("current version of the stock is %d\n", stock.getVersion());
+            System.out.println("更新mysql失败");
             return false;
         }
-        return StockWithRedis.updateStockWithRedis(stock);
+        return true;
     }
 }
