@@ -14,7 +14,7 @@ public class StockServiceImpl implements StockService {
     private StockMapper stockMapper;
 
     @Override
-    public int getStockCount(int id) {
+    public int getStockCount(Integer id) {
         Stock stock = stockMapper.selectByPrimaryKey(id);
         return stock.getCount();
     }
@@ -31,7 +31,7 @@ public class StockServiceImpl implements StockService {
 
     @Override
     public int updateStockInMysql(Stock stock) {
-        return stockMapper.updateByOptimistic(stock);
+        return stockMapper.update(stock);
     }
 
     @Override

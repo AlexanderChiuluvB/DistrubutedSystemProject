@@ -11,7 +11,7 @@ public interface StockService {
      * @param id
      * @return int
      */
-    int getStockCount(int id);
+    int getStockCount(Integer id);
 
     /**
      * 根据 id 查询剩余库存信息

@@ -89,6 +89,12 @@
             <version>2.9.0</version>
         </dependency>
 
+        <dependency>
+            <groupId>org.redisson</groupId>
+            <artifactId>redisson</artifactId>
+            <version>3.11.6</version>
+        </dependency>
+
         <!-- kafka -->
         <dependency>
             <groupId>org.springframework.kafka</groupId>
