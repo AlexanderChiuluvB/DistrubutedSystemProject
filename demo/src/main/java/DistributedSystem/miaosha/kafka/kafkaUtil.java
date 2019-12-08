@@ -11,8 +11,9 @@ import java.util.Properties;
 
 public class kafkaUtil {
 
-    private static final String kafkaPath = "C:\\Users\\64451\\Desktop\\DistrubutedSystemProject\\demo\\src\\main\\resources\\kafka-properties.json";
+   // private static final String kafkaPath = "/home/alex/DistrubutedSystemProject/demo/src/main/resources/kafka-properties.json";
 
+    /**
     private static JsonObject getKafkaConfig(String name) throws FileNotFoundException {
         JsonParser parser = new JsonParser();
         JsonElement parse = parser.parse(new FileReader(kafkaPath));
@@ -29,5 +30,6 @@ public class kafkaUtil {
         }
         return properties;
     }
+     **/
 
 }

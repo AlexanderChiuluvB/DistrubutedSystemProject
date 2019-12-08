@@ -3,13 +3,20 @@ package DistributedSystem.miaosha.redis;
 import DistributedSystem.miaosha.pojo.Stock;
 import io.swagger.models.auth.In;
 import lombok.extern.slf4j.Slf4j;
-import org.redisson.config.Config;
+import org.apache.curator.RetryPolicy;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.CuratorFrameworkFactory;
+import org.apache.curator.framework.recipes.locks.InterProcessMutex;
+import org.apache.curator.retry.ExponentialBackoffRetry;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import redis.clients.jedis.*;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 class TokenBucket{
     private Integer tokens=500;
@@ -35,10 +42,12 @@ class TokenBucket{
 @Component
 @Slf4j
 public class RedisPool {
-
+    @Autowired
+    private static DistributedLocker distributedLocker = new RedissonDistributedLocker();
+    private static RetryPolicy policy = new ExponentialBackoffRetry(2000, 10);
     private static JedisCluster cluster;
-    private static HashMap<Integer,Integer>serverStocks = new HashMap<>();
-    private static HashMap<Integer,Integer>serverBufferStocks=new HashMap<>();
+    private static ConcurrentHashMap<Integer,Integer> serverStocks = new ConcurrentHashMap<>();
+    private static ConcurrentHashMap<Integer,Integer>serverBufferStocks=new ConcurrentHashMap<>();
     private static final Long RELEASE_SUCCESS=1L;
     private static final String LOCK_SUCCESS="OK";
     private static final String SET_IF_NOT_EXIST="NX";
@@ -47,9 +56,19 @@ public class RedisPool {
     private static Integer maxIdle = 100;
     private static Integer maxWait = 10000;
     private static Boolean testOnBorrow = true;
+    private static int getLockCount = 0;
+    private static volatile InterProcessMutex mutex;
     private static TokenBucket bucket= new TokenBucket();
     static {
         initCluster();
+        CuratorFramework curatorFramework = CuratorFrameworkFactory.builder().
+                connectString("172.101.8.4").
+                retryPolicy(policy).
+                build();
+        curatorFramework.start();
+        //Zookeeper的锁
+        mutex = new InterProcessMutex(curatorFramework, "/myMutex");
+
     }
 
     private static void initCluster() {
@@ -70,12 +89,11 @@ public class RedisPool {
     }
 
     public static void addStockEntry(int sid, int stock){
-        serverStocks.put(sid,(int) (stock*0.14));
-        serverBufferStocks.put(sid,(int)(stock*0.03));
+        serverStocks.put(sid,(int) (stock*1.0));
+        serverBufferStocks.put(sid,(int)(stock*0.0));
         System.out.println("server local stocks :"+serverStocks.get(sid));
         System.out.println("server local buffer stocks :"+serverBufferStocks.get(sid));
     }
-
 
     public static JedisCluster getJedis() {
         return cluster;
@@ -99,27 +117,45 @@ public class RedisPool {
     //本地更新库存后，申请Redis的库存
     public static boolean redisDecrStock(Integer sid, Stock s) throws Exception {
 
-        boolean locked=false;
-        String requestId=UUID.randomUUID().toString();
-        while(!locked)
-            locked = tryGetDistributedLock(sid+"_KEY", requestId, 50);
-        Integer stock= Integer.parseInt(cluster.get(StockWithRedis.STOCK_COUNT+sid));
-        if(stock<1){
-            releaseDistributedLock(StockWithRedis.STOCK_COUNT + sid+"_KEY",requestId);
+        try {
+            //Zookeeper版本
+            //mutex.acquire();
+            boolean isGetLock =  distributedLocker.tryLock(sid+"_KEY", TimeUnit.SECONDS,10L,20L);
+            if (isGetLock){
+                Integer stockNum = Integer.parseInt(cluster.get(StockWithRedis.STOCK_COUNT+sid));
+                if(stockNum < 1){
+                    distributedLocker.unlock(sid+"_KEY");
+                    //Zookeeper版本
+                    //mutex.release();
+                    return false;
+                }
+                stockNum = Integer.parseInt(cluster.get(StockWithRedis.STOCK_COUNT+sid));
+                Integer sale=Integer.parseInt(cluster.get(StockWithRedis.STOCK_SALE+sid));
+                cluster.decr(StockWithRedis.STOCK_COUNT+sid);
+                cluster.incr(StockWithRedis.STOCK_SALE+sid);
+                s.setCount(stockNum -1);
+                s.setId(sid);
+                s.setSale(sale+1);
+                System.out.println(++getLockCount);
+                try {
+                    distributedLocker.unlock(sid+"_KEY");
+                    //Zookeeper版本
+                    //mutex.release();
+                } catch (Exception e){
+                    return false;
+                }
+            }
+            //distributedLocker.unlock(sid+"_KEY");
+        } catch (Exception e) {
             return false;
         }
-        Integer sale=Integer.parseInt(cluster.get(StockWithRedis.STOCK_SALE+sid));
-        decr(StockWithRedis.STOCK_COUNT+sid);
-        incr(StockWithRedis.STOCK_SALE+sid);
-        releaseDistributedLock(sid+"_KEY",requestId);
-        s.setCount(stock-1);
-        s.setId(sid);
-        s.setSale(sale+1);
+
+
         return true;
     }
 
-
     public static boolean tryGetDistributedLock(String lockKey, String requestId, int expireTime) {
+
         String result = cluster.set(lockKey, requestId, SET_IF_NOT_EXIST, SET_WITH_EXPIRE_TIME, expireTime);
         return LOCK_SUCCESS.equals(result);
     }

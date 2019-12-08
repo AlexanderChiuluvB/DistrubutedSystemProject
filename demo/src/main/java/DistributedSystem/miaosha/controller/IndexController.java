@@ -80,7 +80,7 @@ public class IndexController {
             System.out.printf("Exception: %s ", e);
             e.printStackTrace();
         }
-        System.out.println("秒杀商品下单成功！");
+        //System.out.println("秒杀商品下单成功！");
         return "秒杀下单成功";
     }
 

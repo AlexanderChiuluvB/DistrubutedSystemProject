@@ -1,14 +1,8 @@
 package DistributedSystem.miaosha.redis;
 
-import DistributedSystem.miaosha.pojo.Stock;
-import lombok.Synchronized;
 import lombok.extern.slf4j.Slf4j;
-import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisCluster;
-import redis.clients.jedis.Transaction;
 
-import javax.xml.stream.FactoryConfigurationError;
-import java.util.List;
 
 @Slf4j
 public class StockWithRedis {

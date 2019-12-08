@@ -19,12 +19,18 @@ public class kafkaConsumeTask implements Runnable {
     private OrderService orderService;
     private final String topic = "mykafka";
 
-
     public kafkaConsumeTask(int partitionIdx) throws Exception{
+
+        Properties properties = new Properties();
+        properties.put("bootstrap.servers", "172.101.8.2:9092,172.101.8.3:9092,172.101.8.4:9092,172.101.8.5:9092,172.101.8.6:9092");
+        properties.put("key.deserializer","org.apache.kafka.common.serialization.StringDeserializer");
+        properties.put("value.deserializer","org.apache.kafka.common.serialization.StringDeserializer");
+        properties.put("enable.auto.commit", "false");
+
         this.gson = SpringBeanFactory.getBean(Gson.class);
         this.orderService = SpringBeanFactory.getBean(OrderService.class);
-        Properties props = kafkaUtil.getProperties("consumer");
-        this.consumer = new KafkaConsumer<String, String>(props);
+        //Properties props = kafkaUtil.getProperties("consumer");
+        this.consumer = new KafkaConsumer<String, String>(properties);
         TopicPartition topicPartition = new TopicPartition(topic, partitionIdx);
         consumer.assign(Arrays.asList(topicPartition));
     }

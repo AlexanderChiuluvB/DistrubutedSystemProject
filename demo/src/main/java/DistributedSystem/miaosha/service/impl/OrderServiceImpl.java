@@ -1,26 +1,21 @@
 package DistributedSystem.miaosha.service.impl;
 
-import DistributedSystem.miaosha.kafka.kafkaProducer;
 import DistributedSystem.miaosha.kafka.miaoshaConsumer;
 import DistributedSystem.miaosha.redis.RedisPool;
-import DistributedSystem.miaosha.redis.StockWithRedis;
 import DistributedSystem.miaosha.service.api.OrderService;
 import DistributedSystem.miaosha.dao.StockOrderMapper;
 import DistributedSystem.miaosha.pojo.Stock;
 import DistributedSystem.miaosha.pojo.StockOrder;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import io.swagger.models.auth.In;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import redis.clients.jedis.JedisCluster;
-
-
-import java.util.Collections;
 import java.util.Date;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @Slf4j
 @Transactional(rollbackFor = Exception.class)
@@ -40,6 +35,8 @@ public class OrderServiceImpl implements OrderService {
     @Value("mykafka")
     private String kafkaTopic;
 
+    @Autowired
+    private miaoshaConsumer consumer;
 
     private Gson gson = new GsonBuilder().create();
 
@@ -53,6 +50,8 @@ public class OrderServiceImpl implements OrderService {
         return RedisPool.acquireToken();
     }
 
+    private ExecutorService pool = Executors.newFixedThreadPool(50);
+
     /**
      * 秒杀的请求
      *
@@ -62,27 +61,23 @@ public class OrderServiceImpl implements OrderService {
     public void checkRedisAndSendToKafka(Integer sid) throws Exception {
         //首先检查Redis(内存缓存)的库存
         Stock stock = checkStockWithRedis(sid);
-        //下单请求发送到Kafka,序列化类
-        //kafkaTemplate.send(kafkaTopic, gson.toJson(stock));
         if (stock != null) {
-            Thread bgthread=new Thread(new BgThread(stock,kafkaTopic,gson));
-            bgthread.start();
+            Thread thread = new Thread(new BgThread(stock,kafkaTopic,gson));
+            thread.start();
         }
-        System.out.println(++this.id);
-
     }
 
     private Stock checkStockWithRedis(Integer sid) throws Exception {
-        Integer localResult=RedisPool.localDecrStock(sid);
-        if(localResult==-1){
-            System.out.println("本服务器内库存不足，秒杀失败\n");
-            return null;
-        }
+        //Integer localResult=RedisPool.localDecrStock(sid);
+        //if(localResult==-1){
+         //   System.out.println("本服务器内库存不足，秒杀失败\n");
+        //    return null;
+        //}
         Stock stock = new Stock();
         boolean redisResult=RedisPool.redisDecrStock(sid,stock);
         if(!redisResult){
-            RedisPool.localDecrStockRecover(sid,localResult);
-            System.out.println("商品"+sid+"已无库存，秒杀失败");
+            //RedisPool.localDecrStockRecover(sid,localResult);
+            //System.out.println("商品"+sid+"已无库存，秒杀失败");
             return null;
         }
         stock.setName(stockService.getStockById(sid).getName());
@@ -130,6 +125,7 @@ public class OrderServiceImpl implements OrderService {
             System.out.println("更新mysql失败");
             return false;
         }
+        //System.out.println("秒杀商品下单成功");
         return true;
     }
 }

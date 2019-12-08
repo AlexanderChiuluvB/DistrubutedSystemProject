@@ -16,14 +16,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-
+/**
 class kafkaTask implements Runnable {
 
     private KafkaConsumer<String, String> consumer;
     private final String topic = "mykafka";
 
     public kafkaTask(int partitionIdx) throws IOException {
-        Properties props = kafkaUtil.getProperties("consumer");
+        P//roperties props = kafkaUtil.getProperties("consumer");
         this.consumer = new KafkaConsumer<String, String>(props);
         TopicPartition topicPartition = new TopicPartition(topic, partitionIdx);
         this.consumer.assign(Arrays.asList(topicPartition));
@@ -81,3 +81,4 @@ public class kafkaMultiThreadTest {
 
 
 }
+**/
