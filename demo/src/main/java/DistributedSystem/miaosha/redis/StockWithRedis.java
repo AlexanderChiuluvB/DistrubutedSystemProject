@@ -32,6 +32,8 @@ public class StockWithRedis {
             jedis = RedisPool.getJedis();
             jedis.set(STOCK_COUNT + id, String.valueOf(count));
             jedis.set(STOCK_SALE + id, "0");
+            System.out.println("Redis STOCK COUNT: "+jedis.get(STOCK_COUNT+id));
+            System.out.println("Redis SALE COUNT: "+jedis.get(STOCK_SALE+id));
             return 1;
         } catch (Exception e) {
             System.out.println("initRedis 获取 Jedis 实例失败："+ e);

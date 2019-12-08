@@ -13,7 +13,7 @@ public interface StockMapper {
      * 初始化 DB
      */
     @Update("UPDATE stock SET count = #{count, jdbcType = INTEGER}, sale = 0" +
-            "WHERE id = #{id, jdbcType = INTEGER}")
+            " WHERE id = #{id, jdbcType = INTEGER}")
     int initDBBefore(@Param("id") int id, @Param("count")int count);
 
     @Insert(("INSERT INTO stock (id, name, count, sale) VALUES " +

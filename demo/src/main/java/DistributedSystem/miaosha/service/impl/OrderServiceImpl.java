@@ -84,7 +84,6 @@ public class OrderServiceImpl implements OrderService {
             System.out.println("商品"+sid+"已无库存，秒杀失败");
             return null;
         }
-
         stock.setName(stockService.getStockById(sid).getName());
         return stock;
     }
@@ -102,7 +101,6 @@ public class OrderServiceImpl implements OrderService {
 
         if (createOrderResult == 1) {
             System.out.printf("商品 %s has sold %d, remain %d\n", stock.getName(), stock.getSale(), stock.getCount());
-            System.out.println("Kafka 消费成功");
         }
         else return -1;
         return createOrderResult;

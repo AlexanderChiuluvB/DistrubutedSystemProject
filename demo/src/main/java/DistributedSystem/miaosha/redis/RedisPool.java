@@ -70,19 +70,15 @@ public class RedisPool {
     }
 
     public static void addStockEntry(int sid, int stock){
-        serverStocks.put(sid,(int)(stock*0.16));
-        serverStocks.put(sid,(int)(stock*0.05));
+        serverStocks.put(sid,(int) (stock*1.0));
+        serverBufferStocks.put(sid,(int)(stock*0.05));
+        System.out.println("server local stocks :"+serverStocks.get(sid));
+        System.out.println("server local buffer stocks :"+serverBufferStocks.get(sid));
     }
 
 
     public static JedisCluster getJedis() {
         return cluster;
-    }
-
-    public static void jedisPoolClose(JedisCluster jedis) throws Exception {
-        if (jedis != null) {
-            jedis.close();
-        }
     }
 
     // 拿到令牌的订单先更新本地库存，单线程操作，无需同步
@@ -102,22 +98,23 @@ public class RedisPool {
 
     //本地更新库存后，申请Redis的库存
     public static boolean redisDecrStock(Integer sid, Stock s) throws Exception {
+
         boolean locked=false;
         String requestId=UUID.randomUUID().toString();
         while(!locked)
-            locked = tryGetDistributedLock(StockWithRedis.STOCK_COUNT + sid+"_KEY", requestId, 50);
-        Integer stock= Integer.parseInt(get(StockWithRedis.STOCK_COUNT+sid));
+            locked = tryGetDistributedLock(sid+"_KEY", requestId, 50);
+        Integer stock= Integer.parseInt(cluster.get(StockWithRedis.STOCK_COUNT+sid));
         if(stock<1){
             releaseDistributedLock(StockWithRedis.STOCK_COUNT + sid+"_KEY",requestId);
             return false;
         }
-        Integer sale=Integer.parseInt(get(StockWithRedis.STOCK_SALE+sid));
+        Integer sale=Integer.parseInt(cluster.get(StockWithRedis.STOCK_SALE+sid));
         decr(StockWithRedis.STOCK_COUNT+sid);
         incr(StockWithRedis.STOCK_SALE+sid);
-        releaseDistributedLock(StockWithRedis.STOCK_COUNT + sid+"_KEY",requestId);
-        s.setCount(stock);
+        releaseDistributedLock(sid+"_KEY",requestId);
+        s.setCount(stock-1);
         s.setId(sid);
-        s.setSale(sale);
+        s.setSale(sale+1);
         return true;
     }
 
@@ -141,7 +138,7 @@ public class RedisPool {
             serverBufferStocks.put(sid,serverBufferStocks.get(sid)+1);
     }
 
-    // 每5ms，令牌桶中令牌增加一个，可以根据服务器处理能力进行调整
+    // 每1ms，令牌桶中令牌增加一个，可以根据服务器处理能力进行调整
     @Scheduled(fixedRate = 1)
     private static void incrTokenBucket(){
         bucket.incrToken();
@@ -152,33 +149,24 @@ public class RedisPool {
     }
 
     public static String set(String key, String value) throws Exception {
-
-        JedisCluster jedis = null;
         String result = null;
 
         try {
-            jedis = getJedis();
-            result = jedis.set(key, value);
+            result = cluster.set(key, value);
         } catch (Exception e) {
             System.out.printf("set key{%s} value{%s} error %s" , key , value , e);
             e.printStackTrace();
-        } finally {
-            jedisPoolClose(jedis);
         }
         return result;
     }
 
     public static String get(String key) throws Exception {
-        JedisCluster jedis = null;
         String result = null;
 
         try {
-            jedis = RedisPool.getJedis();
-            result = jedis.get(key);
+            cluster.get(key);
         } catch (Exception e) {
-            System.out.println("get key:{} error" + key + e);
-        } finally {
-            RedisPool.jedisPoolClose(jedis);
+            System.out.println("get key:{} error " + key + e);
         }
         return result;
     }
@@ -189,15 +177,11 @@ public class RedisPool {
      * @param key
      */
     public static Long del(String key) throws Exception {
-        JedisCluster jedis = null;
         Long result = null;
         try {
-            jedis = RedisPool.getJedis();
-            result = jedis.del(key);
+            result = cluster.del(key);
         } catch (Exception e) {
             System.out.println("del key:{} error" + key + e);
-        } finally {
-            RedisPool.jedisPoolClose(jedis);
         }
         return result;
     }
@@ -206,15 +190,11 @@ public class RedisPool {
      * key - value 自增
      */
     public static Long incr(String key) throws Exception {
-        JedisCluster jedis = null;
         Long result = null;
         try {
-            jedis = RedisPool.getJedis();
-            result = jedis.incr(key);
+            result = cluster.incr(key);
         } catch (Exception e) {
             System.out.println("listGet key:{} error" + key + e);
-        } finally {
-            RedisPool.jedisPoolClose(jedis);
         }
         return result;
     }
@@ -223,15 +203,11 @@ public class RedisPool {
      * key - value 自减
      */
     public static Long decr(String key) throws Exception {
-        JedisCluster jedis = null;
         Long result = null;
         try {
-            jedis = RedisPool.getJedis();
-            result = jedis.decr(key);
+            result = cluster.decr(key);
         } catch (Exception e) {
             System.out.println("listGet key:{} error" + key + e);
-        } finally {
-            RedisPool.jedisPoolClose(jedis);
         }
         return result;
     }
