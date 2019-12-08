@@ -70,8 +70,8 @@ public class RedisPool {
     }
 
     public static void addStockEntry(int sid, int stock){
-        serverStocks.put(sid,(int) (stock*1.0));
-        serverBufferStocks.put(sid,(int)(stock*0.05));
+        serverStocks.put(sid,(int) (stock*0.14));
+        serverBufferStocks.put(sid,(int)(stock*0.03));
         System.out.println("server local stocks :"+serverStocks.get(sid));
         System.out.println("server local buffer stocks :"+serverBufferStocks.get(sid));
     }

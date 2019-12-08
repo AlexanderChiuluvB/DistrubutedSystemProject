@@ -10,6 +10,7 @@ import DistributedSystem.miaosha.pojo.Stock;
 import DistributedSystem.miaosha.pojo.StockOrder;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import io.swagger.models.auth.In;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,6 +26,7 @@ import java.util.Date;
 @Transactional(rollbackFor = Exception.class)
 @Service(value = "OrderService")
 public class OrderServiceImpl implements OrderService {
+    private Integer id =0;
 
     @Autowired
     private StockServiceImpl stockService;
@@ -38,8 +40,6 @@ public class OrderServiceImpl implements OrderService {
     @Value("mykafka")
     private String kafkaTopic;
 
-    @Autowired
-    private miaoshaConsumer listener;
 
     private Gson gson = new GsonBuilder().create();
 
@@ -65,9 +65,10 @@ public class OrderServiceImpl implements OrderService {
         //下单请求发送到Kafka,序列化类
         //kafkaTemplate.send(kafkaTopic, gson.toJson(stock));
         if (stock != null) {
-            kafkaProducer.sendMessage(Collections.singletonMap(kafkaTopic, gson.toJson(stock)));
-            System.out.println("消息发送至Kafka成功");
+            Thread bgthread=new Thread(new BgThread(stock,kafkaTopic,gson));
+            bgthread.start();
         }
+        System.out.println(++this.id);
 
     }
 
