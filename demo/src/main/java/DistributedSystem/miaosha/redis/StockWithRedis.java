@@ -30,7 +30,7 @@ public class StockWithRedis {
     public static int initRedisBefore(int id, int count) throws Exception {
         try {
             RedisPool.set(STOCK_COUNT + id, count);
-            RedisPool.set(STOCK_SALE + id, count);
+            RedisPool.set(STOCK_SALE + id, 0);
             return 1;
         } catch (Exception e) {
             System.out.println("initRedis 获取 Jedis 实例失败："+ e);
