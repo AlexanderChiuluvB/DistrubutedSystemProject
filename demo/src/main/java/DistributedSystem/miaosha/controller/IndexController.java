@@ -33,7 +33,7 @@ public class IndexController {
     @ApiOperation(value = "初始化数据库", notes = "初始化数据库")
     @RequestMapping(value = "initDBAndRedis", method = RequestMethod.POST)
     @ResponseBody
-    public String initDBAndRedisBefore(HttpServletRequest request, int sid, int count) {
+    public String initDBAndRedisBefore(HttpServletRequest request, Integer sid, Integer count) {
 
         int res = 0;
         try {
@@ -55,6 +55,9 @@ public class IndexController {
                 return "初始化Redis失败";
             }
 
+            // 初始化服务器本地拥有的库存和buffer库存的数量
+            StockWithRedis.initServerBefore(sid,count);
+
         } catch (Exception e) {
             System.out.printf("Exception: %s ", e);
         }
@@ -68,16 +71,23 @@ public class IndexController {
     @RequestMapping(value = "createOrderWithLimitAndRedisAndKafka", method = RequestMethod.POST)
     @ResponseBody
     public String createOrderWithLimitsAndRedisAndKafka(HttpServletRequest request, Integer sid) {
-
+        boolean result=false;
         try {
             if (!orderService.acquireTokenFromRedisBucket(sid))
-                return "秒杀失败";
-            orderService.checkRedisAndSendToKafka(sid);
+                return "令牌获取失败";
+            result=orderService.checkRedisAndSendToKafka(sid);
         } catch (Exception e) {
             System.out.printf("Exception: %s ", e);
             e.printStackTrace();
         }
-        return "秒杀请求正在处理,排队中";
+        if(result){
+            System.out.println("秒杀商品下单成功！");
+            return "秒杀商品下单成功！";
+        }
+        else{
+            System.out.println("秒杀商品下单失败！");
+            return "秒杀商品下单失败！";
+        }
     }
 
     @ApiOperation(value = "查询库存", notes = "查询库存")
