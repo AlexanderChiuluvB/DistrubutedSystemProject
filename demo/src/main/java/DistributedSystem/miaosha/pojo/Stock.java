@@ -48,6 +48,4 @@ public class Stock {
 
     private Integer Sale;
 
-    private Integer Version;
-
 }

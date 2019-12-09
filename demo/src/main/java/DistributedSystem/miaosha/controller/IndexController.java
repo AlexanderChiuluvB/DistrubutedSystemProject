@@ -71,17 +71,23 @@ public class IndexController {
     @RequestMapping(value = "createOrderWithLimitAndRedisAndKafka", method = RequestMethod.POST)
     @ResponseBody
     public String createOrderWithLimitsAndRedisAndKafka(HttpServletRequest request, Integer sid) {
-
+        boolean result=false;
         try {
             if (!orderService.acquireTokenFromRedisBucket(sid))
                 return "令牌获取失败";
-            orderService.checkRedisAndSendToKafka(sid);
+            result=orderService.checkRedisAndSendToKafka(sid);
         } catch (Exception e) {
             System.out.printf("Exception: %s ", e);
             e.printStackTrace();
         }
-        System.out.println("秒杀商品下单成功！");
-        return "秒杀下单成功";
+        if(result){
+            System.out.println("秒杀商品下单成功！");
+            return "秒杀商品下单成功！";
+        }
+        else{
+            System.out.println("秒杀商品下单失败！");
+            return "秒杀商品下单失败！";
+        }
     }
 
     @ApiOperation(value = "查询库存", notes = "查询库存")

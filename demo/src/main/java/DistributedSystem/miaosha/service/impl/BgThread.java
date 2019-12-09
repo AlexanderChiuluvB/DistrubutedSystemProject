@@ -11,6 +11,7 @@ public class BgThread implements Runnable{
     private Stock stock;
     private String kafkaTopic;
     private Gson gson;
+    private static int id=0;
 
 
     public BgThread(Stock s,String k,Gson g){
@@ -21,6 +22,7 @@ public class BgThread implements Runnable{
 
     public void run(){
         try {
+            System.out.println("To Kafka :"+(++id));
             kafkaProducer.sendMessage(Collections.singletonMap(kafkaTopic, gson.toJson(stock)));
         } catch (Exception e) {
             e.printStackTrace();

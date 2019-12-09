@@ -37,6 +37,11 @@ public class OrderServiceImpl implements OrderService {
     //@Autowired
     //private KafkaTemplate<String, String> kafkaTemplate;
 
+
+    @Autowired
+    private miaoshaConsumer consumer;
+
+
     @Value("mykafka")
     private String kafkaTopic;
 
@@ -59,16 +64,18 @@ public class OrderServiceImpl implements OrderService {
      * @param sid stock id
      */
     @Override
-    public void checkRedisAndSendToKafka(Integer sid) throws Exception {
+    public boolean checkRedisAndSendToKafka(Integer sid) throws Exception {
         //首先检查Redis(内存缓存)的库存
         Stock stock = checkStockWithRedis(sid);
         //下单请求发送到Kafka,序列化类
         //kafkaTemplate.send(kafkaTopic, gson.toJson(stock));
+        System.out.println(++this.id);
         if (stock != null) {
             Thread bgthread=new Thread(new BgThread(stock,kafkaTopic,gson));
             bgthread.start();
+            return true;
         }
-        System.out.println(++this.id);
+        return false;
 
     }
 
@@ -82,7 +89,7 @@ public class OrderServiceImpl implements OrderService {
         boolean redisResult=RedisPool.redisDecrStock(sid,stock);
         if(!redisResult){
             RedisPool.localDecrStockRecover(sid,localResult);
-            System.out.println("商品"+sid+"已无库存，秒杀失败");
+            System.out.println("商品"+sid+"已无Redis库存，秒杀失败");
             return null;
         }
         stock.setName(stockService.getStockById(sid).getName());
@@ -92,6 +99,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public int createOrderAndSendToDB(Stock stock) throws Exception {
+        System.out.println("马上更新Mysql");
         boolean updateResult = updateMysql(stock);
         int createOrderResult = -1;
 
