@@ -17,6 +17,9 @@ import redis.clients.jedis.*;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 class TokenBucket{
     private Integer tokens=500;
@@ -78,15 +81,15 @@ public class RedisPool {
                 .setSlaveConnectionPoolSize(100);
 
         cluster = Redisson.create(config);
-        set("TEST",250);
-        System.out.println("Redis initialization Test: "+get("TEST"));
+        //set("TEST",250);
+        //System.out.println("Redis initialization Test: "+get("TEST"));
     }
 
-    public static void addStockEntry(int sid, int stock){
-        serverStocks.put(sid,(int) (stock*1.0));
-        serverBufferStocks.put(sid,(int)(stock*0.03));
+    public static void addStockEntry(int sid, int stockNum){
+        serverStocks.put(sid,(int) (stockNum/7));
+        //serverBufferStocks.put(sid,(int)(stockNum*0.03));
         System.out.println("server local stocks :"+serverStocks.get(sid));
-        System.out.println("server local buffer stocks :"+serverBufferStocks.get(sid));
+        //System.out.println("server local buffer stocks :"+serverBufferStocks.get(sid));
     }
 
 
@@ -95,17 +98,26 @@ public class RedisPool {
     }
 
     // 拿到令牌的订单先更新本地库存，单线程操作，无需同步
+    // TODO 本地减库存也要保证线程安全
     public static Integer localDecrStock(Integer sid){
-        Integer stock=serverStocks.get(sid);
-        if(stock>0){
-            serverStocks.put(sid,stock-1);
-            return 1;
+        //Semaphore semaphore = new Semaphore(1);
+        try {
+          //  semaphore.acquire();
+            Integer stock=serverStocks.get(sid);
+            if(stock>0){
+                serverStocks.put(sid,stock-1);
+            //    semaphore.release();
+                return 1;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-        stock=serverBufferStocks.get(sid);
-        if(stock>0){
-            serverBufferStocks.put(sid,stock-1);
-            return 0;
-        }
+        //semaphore.release();
+        //stock=serverBufferStocks.get(sid);
+        //if(stock>0){
+        //    serverBufferStocks.put(sid,stock-1);
+        //    return 0;
+        //}
         return -1;
     }
 
@@ -142,12 +154,12 @@ public class RedisPool {
 //    }
 
     // 本地先更新库存，如果Redis库存空了，本地库存要恢复
-    public static void localDecrStockRecover(Integer sid,Integer localCode){
-        if(localCode==1)
-            serverStocks.put(sid,serverStocks.get(sid)+1);
-        else
-            serverBufferStocks.put(sid,serverBufferStocks.get(sid)+1);
-    }
+    //public static void localDecrStockRecover(Integer sid,Integer localResult){
+    //    if(localResult==1)
+    //        serverStocks.put(sid,serverStocks.get(sid)+1);
+    //    else
+    //        serverBufferStocks.put(sid,serverBufferStocks.get(sid)+1);
+    //}
 
     // 每1ms，令牌桶中令牌增加一个，可以根据服务器处理能力进行调整
     @Scheduled(fixedRate = 1)

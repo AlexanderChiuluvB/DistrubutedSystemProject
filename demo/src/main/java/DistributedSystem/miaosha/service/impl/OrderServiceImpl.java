@@ -1,7 +1,6 @@
 package DistributedSystem.miaosha.service.impl;
 
 import DistributedSystem.miaosha.kafka.kafkaProducer;
-import DistributedSystem.miaosha.kafka.miaoshaConsumer;
 import DistributedSystem.miaosha.redis.RedisPool;
 import DistributedSystem.miaosha.redis.StockWithRedis;
 import DistributedSystem.miaosha.service.api.OrderService;
@@ -21,6 +20,7 @@ import redis.clients.jedis.JedisCluster;
 
 import java.util.Collections;
 import java.util.Date;
+import java.util.concurrent.Semaphore;
 
 @Slf4j
 @Transactional(rollbackFor = Exception.class)
@@ -38,13 +38,14 @@ public class OrderServiceImpl implements OrderService {
     //private KafkaTemplate<String, String> kafkaTemplate;
 
 
-    @Autowired
-    private miaoshaConsumer consumer;
+   // @Autowired
+   // private miaoshaConsumer consumer;
 
 
     @Value("mykafka")
     private String kafkaTopic;
 
+    private Semaphore semaphore = new Semaphore(1);
 
     private Gson gson = new GsonBuilder().create();
 
@@ -69,7 +70,7 @@ public class OrderServiceImpl implements OrderService {
         Stock stock = checkStockWithRedis(sid);
         //下单请求发送到Kafka,序列化类
         //kafkaTemplate.send(kafkaTopic, gson.toJson(stock));
-        System.out.println(++this.id);
+        //System.out.println(++this.id);
         if (stock != null) {
             Thread bgthread=new Thread(new BgThread(stock,kafkaTopic,gson));
             bgthread.start();
@@ -79,20 +80,33 @@ public class OrderServiceImpl implements OrderService {
 
     }
 
+    //TODO 本地减库存线程不安全
     private Stock checkStockWithRedis(Integer sid) throws Exception {
-        Integer localResult=RedisPool.localDecrStock(sid);
-        if(localResult==-1){
-            System.out.println("本服务器内库存不足，秒杀失败\n");
-            return null;
+       // ver1. semaphore
+        try {
+            semaphore.acquire();
+            Integer localResult=RedisPool.localDecrStock(sid);
+            if(localResult==-1){
+                System.out.println("本服务器内库存不足，秒杀失败\n");
+                return null;
+            }
+        } catch (Exception e){
+            e.printStackTrace();
+        } finally {
+            semaphore.release();
         }
+
+        // ver2. synchronized
+
         Stock stock = new Stock();
         boolean redisResult=RedisPool.redisDecrStock(sid,stock);
         if(!redisResult){
-            RedisPool.localDecrStockRecover(sid,localResult);
-            System.out.println("商品"+sid+"已无Redis库存，秒杀失败");
+            //RedisPool.localDecrStockRecover(sid,localResult);
+            System.out.println("商品"+stock.getName()+"已无Redis库存，秒杀失败");
             return null;
         }
         stock.setName(stockService.getStockById(sid).getName());
+        System.out.println(++this.id);
         return stock;
     }
 
