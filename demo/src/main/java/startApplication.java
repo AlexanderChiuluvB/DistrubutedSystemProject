@@ -22,7 +22,7 @@ import springfox.documentation.swagger2.annotations.EnableSwagger2;
 public class startApplication {
     public static void main(String[] args) throws Exception{
         SpringApplication.run(startApplication.class, args);
-        kafkaConsumer consumer=new kafkaConsumer(10);
+        kafkaConsumer consumer=new kafkaConsumer(100);
         consumer.execute();
     }
 }

@@ -98,7 +98,6 @@ public class RedisPool {
     }
 
     // 拿到令牌的订单先更新本地库存，单线程操作，无需同步
-    // TODO 本地减库存也要保证线程安全
     public static Integer localDecrStock(Integer sid){
         //Semaphore semaphore = new Semaphore(1);
         try {

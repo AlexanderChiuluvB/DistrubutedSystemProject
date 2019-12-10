@@ -20,13 +20,16 @@ import redis.clients.jedis.JedisCluster;
 
 import java.util.Collections;
 import java.util.Date;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.ThreadPoolExecutor;
 
 @Slf4j
 @Transactional(rollbackFor = Exception.class)
 @Service(value = "OrderService")
 public class OrderServiceImpl implements OrderService {
-    private Integer id =0;
+    private Integer id = 0;
 
     @Autowired
     private StockServiceImpl stockService;
@@ -38,14 +41,16 @@ public class OrderServiceImpl implements OrderService {
     //private KafkaTemplate<String, String> kafkaTemplate;
 
 
-   // @Autowired
-   // private miaoshaConsumer consumer;
+    // @Autowired
+    // private miaoshaConsumer consumer;
 
 
     @Value("mykafka")
     private String kafkaTopic;
 
     private Semaphore semaphore = new Semaphore(1);
+
+    private ExecutorService pool = Executors.newFixedThreadPool(100);
 
     private Gson gson = new GsonBuilder().create();
 
@@ -72,8 +77,9 @@ public class OrderServiceImpl implements OrderService {
         //kafkaTemplate.send(kafkaTopic, gson.toJson(stock));
         //System.out.println(++this.id);
         if (stock != null) {
-            Thread bgthread=new Thread(new BgThread(stock,kafkaTopic,gson));
-            bgthread.start();
+            pool.submit(new BgThread(stock, kafkaTopic, gson));
+            //Thread bgthread=new Thread(new BgThread(stock,kafkaTopic,gson));
+            //bgthread.start();
             return true;
         }
         return false;
@@ -82,27 +88,27 @@ public class OrderServiceImpl implements OrderService {
 
     //TODO 本地减库存线程不安全
     private Stock checkStockWithRedis(Integer sid) throws Exception {
-       // ver1. semaphore
+        // ver1. semaphore
         try {
-            semaphore.acquire();
-            Integer localResult=RedisPool.localDecrStock(sid);
-            if(localResult==-1){
+            //semaphore.acquire();
+            Integer localResult = RedisPool.localDecrStock(sid);
+            if (localResult == -1) {
                 System.out.println("本服务器内库存不足，秒杀失败\n");
                 return null;
             }
-        } catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         } finally {
-            semaphore.release();
+            //semaphore.release();
         }
 
         // ver2. synchronized
 
         Stock stock = new Stock();
-        boolean redisResult=RedisPool.redisDecrStock(sid,stock);
-        if(!redisResult){
+        boolean redisResult = RedisPool.redisDecrStock(sid, stock);
+        if (!redisResult) {
             //RedisPool.localDecrStockRecover(sid,localResult);
-            System.out.println("商品"+stock.getName()+"已无Redis库存，秒杀失败");
+            System.out.println("商品" + stock.getName() + "已无Redis库存，秒杀失败");
             return null;
         }
         stock.setName(stockService.getStockById(sid).getName());
@@ -119,13 +125,11 @@ public class OrderServiceImpl implements OrderService {
 
         if (updateResult) {
             createOrderResult = createOrder(stock);
-        }
-        else return createOrderResult;
+        } else return createOrderResult;
 
         if (createOrderResult == 1) {
             System.out.printf("商品 %s has sold %d, remain %d\n", stock.getName(), stock.getSale(), stock.getCount());
-        }
-        else return -1;
+        } else return -1;
         return createOrderResult;
     }
 
