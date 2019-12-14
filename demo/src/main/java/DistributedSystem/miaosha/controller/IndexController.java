@@ -73,6 +73,7 @@ public class IndexController {
     public String createOrderWithLimitsAndRedisAndKafka(HttpServletRequest request, Integer sid) {
         boolean result=false;
         try {
+
             if (!orderService.acquireTokenFromRedisBucket(sid))
                 return "令牌获取失败";
             result=orderService.checkRedisAndSendToKafka(sid);
