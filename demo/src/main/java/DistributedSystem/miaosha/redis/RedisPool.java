@@ -81,15 +81,10 @@ public class RedisPool {
                 .setSlaveConnectionPoolSize(100);
 
         cluster = Redisson.create(config);
-        //set("TEST",250);
-        //System.out.println("Redis initialization Test: "+get("TEST"));
     }
 
     public static void addStockEntry(int sid, int stockNum){
         serverStocks.put(sid,(int) (stockNum/7));
-        //serverBufferStocks.put(sid,(int)(stockNum*0.03));
-        System.out.println("server local stocks :"+serverStocks.get(sid));
-        //System.out.println("server local buffer stocks :"+serverBufferStocks.get(sid));
     }
 
 
@@ -97,26 +92,17 @@ public class RedisPool {
         return cluster;
     }
 
-    // 拿到令牌的订单先更新本地库存，单线程操作，无需同步
+    // 拿到令牌的订单先更新本地库存，变量线程安全，无需额外同步
     public static Integer localDecrStock(Integer sid){
-        //Semaphore semaphore = new Semaphore(1);
         try {
-          //  semaphore.acquire();
             Integer stock=serverStocks.get(sid);
             if(stock>0){
                 serverStocks.put(sid,stock-1);
-            //    semaphore.release();
                 return 1;
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
-        //semaphore.release();
-        //stock=serverBufferStocks.get(sid);
-        //if(stock>0){
-        //    serverBufferStocks.put(sid,stock-1);
-        //    return 0;
-        //}
         return -1;
     }
 
@@ -139,26 +125,6 @@ public class RedisPool {
         System.out.println("Now in Redis, STOCK ="+(stock-1)+" SALE="+(sale+1));
         return true;
     }
-
-
-//    public static boolean tryGetDistributedLock(String lockKey, String requestId, int expireTime) {
-//        String result = set(lockKey, requestId, SET_IF_NOT_EXIST, SET_WITH_EXPIRE_TIME, expireTime);
-//        return LOCK_SUCCESS.equals(result);
-//    }
-//
-//    public static boolean releaseDistributedLock(String lockKey, String requestId) {
-//        String script = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end";
-//        Object result = cluster.eval(script, Collections.singletonList(lockKey), Collections.singletonList(requestId));
-//        return RELEASE_SUCCESS.equals(result);
-//    }
-
-    // 本地先更新库存，如果Redis库存空了，本地库存要恢复
-    //public static void localDecrStockRecover(Integer sid,Integer localResult){
-    //    if(localResult==1)
-    //        serverStocks.put(sid,serverStocks.get(sid)+1);
-    //    else
-    //        serverBufferStocks.put(sid,serverBufferStocks.get(sid)+1);
-    //}
 
     // 每1ms，令牌桶中令牌增加一个，可以根据服务器处理能力进行调整
     @Scheduled(fixedRate = 1)

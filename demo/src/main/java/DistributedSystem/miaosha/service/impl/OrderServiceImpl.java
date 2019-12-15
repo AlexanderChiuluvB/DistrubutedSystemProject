@@ -74,12 +74,8 @@ public class OrderServiceImpl implements OrderService {
         //首先检查Redis(内存缓存)的库存
         Stock stock = checkStockWithRedis(sid);
         //下单请求发送到Kafka,序列化类
-        //kafkaTemplate.send(kafkaTopic, gson.toJson(stock));
-        //System.out.println(++this.id);
         if (stock != null) {
             pool.submit(new BgThread(stock, kafkaTopic, gson));
-            //Thread bgthread=new Thread(new BgThread(stock,kafkaTopic,gson));
-            //bgthread.start();
             return true;
         }
         return false;
