@@ -1,5 +1,6 @@
 package DistributedSystem.miaosha.service.impl;
 
+import DistributedSystem.miaosha.kafka.kafkaProducer;
 import DistributedSystem.miaosha.redis.RedisPool;
 import DistributedSystem.miaosha.redis.StockWithRedis;
 import DistributedSystem.miaosha.service.api.OrderService;
@@ -8,20 +9,27 @@ import DistributedSystem.miaosha.pojo.Stock;
 import DistributedSystem.miaosha.pojo.StockOrder;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import io.swagger.models.auth.In;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import redis.clients.jedis.JedisCluster;
 
 
+import java.util.Collections;
 import java.util.Date;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.ThreadPoolExecutor;
 
 @Slf4j
 @Transactional(rollbackFor = Exception.class)
 @Service(value = "OrderService")
 public class OrderServiceImpl implements OrderService {
+    private Integer id = 0;
 
     @Autowired
     private StockServiceImpl stockService;
@@ -29,11 +37,20 @@ public class OrderServiceImpl implements OrderService {
     @Autowired
     private StockOrderMapper stockOrderMapper;
 
-    @Autowired
-    private KafkaTemplate<String, String> kafkaTemplate;
+    //@Autowired
+    //private KafkaTemplate<String, String> kafkaTemplate;
+
+
+    // @Autowired
+    // private miaoshaConsumer consumer;
+
 
     @Value("mykafka")
     private String kafkaTopic;
+
+    private Semaphore semaphore = new Semaphore(1);
+
+    private ExecutorService pool = Executors.newFixedThreadPool(100);
 
     private Gson gson = new GsonBuilder().create();
 
@@ -42,32 +59,72 @@ public class OrderServiceImpl implements OrderService {
         return stockOrderMapper.clearDB();
     }
 
+    @Override
+    public boolean acquireTokenFromRedisBucket(Integer sid) {
+        return RedisPool.acquireToken();
+    }
+
     /**
      * 秒杀的请求
+     *
      * @param sid stock id
      */
     @Override
-    public void checkRedisAndSendToKafka(int sid) {
+    public boolean checkRedisAndSendToKafka(Integer sid) throws Exception {
         //首先检查Redis(内存缓存)的库存
         Stock stock = checkStockWithRedis(sid);
         //下单请求发送到Kafka,序列化类
-        kafkaTemplate.send(kafkaTopic, gson.toJson(stock));
-        log.info("消息发送至Kafka成功");
+        //kafkaTemplate.send(kafkaTopic, gson.toJson(stock));
+        //System.out.println(++this.id);
+        if (stock != null) {
+            pool.submit(new BgThread(stock, kafkaTopic, gson));
+            //Thread bgthread=new Thread(new BgThread(stock,kafkaTopic,gson));
+            //bgthread.start();
+            return true;
+        }
+        return false;
+
     }
+
+    private Stock checkStockWithRedis(Integer sid) throws Exception {
+        try {
+            Integer localResult = RedisPool.localDecrStock(sid);
+            if (localResult == -1) {
+                System.out.println("本服务器内库存不足，秒杀失败\n");
+                return null;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        Stock stock = new Stock();
+        boolean redisResult = RedisPool.redisDecrStock(sid, stock);
+        if (!redisResult) {
+            //RedisPool.localDecrStockRecover(sid,localResult);
+            System.out.println("商品" + stock.getName() + "已无Redis库存，秒杀失败");
+            return null;
+        }
+        stock.setName(stockService.getStockById(sid).getName());
+        System.out.println(++this.id);
+        return stock;
+    }
+
 
     @Override
     public int createOrderAndSendToDB(Stock stock) throws Exception {
-        //TODO 乐观锁更新库存和Redis
-        updateMysqlAndRedis(stock);
-        int result = createOrder(stock);
-        if (result == 1) {
-            System.out.println("Kafka 消费成功");
-        } else {
-            System.out.println("Kafka 消费失败");
-        }
-        return result;
-    }
+        System.out.println("马上更新Mysql");
+        boolean updateResult = updateMysql(stock);
+        int createOrderResult = -1;
 
+        if (updateResult) {
+            createOrderResult = createOrder(stock);
+        } else return createOrderResult;
+
+        if (createOrderResult == 1) {
+            System.out.printf("商品 %s has sold %d, remain %d\n", stock.getName(), stock.getSale(), stock.getCount());
+        } else return -1;
+        return createOrderResult;
+    }
 
     /**
      * 创建持久化到数据库的订单
@@ -75,42 +132,23 @@ public class OrderServiceImpl implements OrderService {
     private int createOrder(Stock stock) {
 
         StockOrder order = new StockOrder();
-        order.setId(stock.getId());
         order.setCreateTime(new Date());
         order.setName(stock.getName());
+        order.setSid(stock.getId());
         int result = stockOrderMapper.insertToDB(order);
         if (result == 0) {
-            throw new RuntimeException("创建订单失败");
+            System.out.println("创建订单失败");
+            return -1;
         }
         return result;
     }
 
-    private void updateMysqlAndRedis(Stock stock) {
+    private boolean updateMysql(Stock stock) throws Exception {
         int result = stockService.updateStockInMysql(stock);
         if (result == 0) {
-            throw new RuntimeException("并发更新mysql失败");
+            System.out.println("更新mysql失败");
+            return false;
         }
-        StockWithRedis.updateStockWithRedis(stock);
+        return true;
     }
-
-    private Stock checkStockWithRedis(int sid) {
-
-        Integer count = Integer.parseInt(RedisPool.get(StockWithRedis.STOCK_COUNT + sid));
-        Integer version = Integer.parseInt(RedisPool.get(StockWithRedis.STOCK_VERSION + sid));
-        Integer sale = Integer.parseInt(RedisPool.get(StockWithRedis.STOCK_SALE + sid));
-        if (count < 1) {
-            log.info("库存不足");
-            throw new RuntimeException("库存不足 Redis currentCount: " + sale);
-        }
-        Stock stock = new Stock();
-        stock.setId(sid);
-        stock.setCount(count);
-        stock.setSale(sale);
-        stock.setVersion(version);
-        // 此处应该是热更新，但是在数据库中只有一个商品，所以直接赋值
-        stock.setName("mobile phone");
-        return stock;
-    }
-
-
 }

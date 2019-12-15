@@ -11,7 +11,7 @@ public interface StockService {
      * @param id
      * @return int
      */
-    int getStockCount(int id);
+    int getStockCount(Integer id);
 
     /**
      * 根据 id 查询剩余库存信息
@@ -35,5 +35,10 @@ public interface StockService {
     /**
      * 初始化数据库
      */
-    int initDBBefore();
+    int initDBBefore(int id, int count);
+
+
+    int createStock(int id, int count, String name);
+
+
 }

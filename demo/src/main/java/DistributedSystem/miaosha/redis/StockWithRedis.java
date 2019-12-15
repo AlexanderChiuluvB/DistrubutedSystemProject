@@ -1,10 +1,14 @@
 package DistributedSystem.miaosha.redis;
 
 import DistributedSystem.miaosha.pojo.Stock;
+import lombok.Synchronized;
 import lombok.extern.slf4j.Slf4j;
+import org.redisson.api.RedissonClient;
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisCluster;
 import redis.clients.jedis.Transaction;
 
+import javax.xml.stream.FactoryConfigurationError;
 import java.util.List;
 
 @Slf4j
@@ -16,53 +20,26 @@ public class StockWithRedis {
     public final static String STOCK_COUNT = "stock_count_";
 
     /**
-     * 库存值
+     * 销售值
      */
     public final static String STOCK_SALE = "stock_sale_";
 
     /**
-     * 库存值
+     * 重置缓存 缓存预热
      */
-    public final static String STOCK_VERSION = "stock_version_";
-
-
-    public static void updateStockWithRedis(Stock stock) {
-        Jedis jedis = null;
+    public static int initRedisBefore(int id, int count) throws Exception {
         try {
-            jedis = RedisPool.getJedis();
-            Transaction transaction = jedis.multi();
-            //开始事务
-            RedisPool.decr(STOCK_COUNT + stock.getCount());
-            RedisPool.incr(STOCK_SALE + stock.getCount());
-            RedisPool.incr(STOCK_VERSION + stock.getVersion());
-            transaction.exec();
+            RedisPool.set(STOCK_COUNT + id, count);
+            RedisPool.set(STOCK_SALE + id, 0);
+            return 1;
         } catch (Exception e) {
-            log.error("updateStock fail", e);
-            e.printStackTrace();
-        }finally {
-            RedisPool.jedisPoolClose(jedis);
+            System.out.println("initRedis 获取 Jedis 实例失败："+ e);
+            return 0;
         }
     }
-    /**
-     * 重置缓存
-     */
-    public static void initRedisBefore() {
-        Jedis jedis = null;
-        try {
-            jedis = RedisPool.getJedis();
-            // 开始事务
-            Transaction transaction = jedis.multi();
-            // 事务操作
-            RedisPool.set(STOCK_COUNT + 1, "50");
-            RedisPool.set(STOCK_SALE + 1, "0");
-            RedisPool.set(STOCK_VERSION + 1, "0");
-            // 结束事务
-            List<Object> list = transaction.exec();
-        } catch (Exception e) {
-            log.error("initRedis 获取 Jedis 实例失败：", e);
-        } finally {
-            RedisPool.jedisPoolClose(jedis);
-        }
+
+    public static void initServerBefore(int id ,int count){
+        RedisPool.addStockEntry(id,count);
     }
 
 

@@ -7,7 +7,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 
-
 @Service(value = "StockService")
 public class StockServiceImpl implements StockService {
 
@@ -15,7 +14,7 @@ public class StockServiceImpl implements StockService {
     private StockMapper stockMapper;
 
     @Override
-    public int getStockCount(int id) {
+    public int getStockCount(Integer id) {
         Stock stock = stockMapper.selectByPrimaryKey(id);
         return stock.getCount();
     }
@@ -32,11 +31,17 @@ public class StockServiceImpl implements StockService {
 
     @Override
     public int updateStockInMysql(Stock stock) {
-        return stockMapper.updateByOptimistic(stock);
+        return stockMapper.update(stock);
     }
 
     @Override
-    public int initDBBefore() {
-        return stockMapper.initDBBefore();
+    public int initDBBefore(int id, int count) {
+        return stockMapper.initDBBefore(id, count);
     }
+
+    @Override
+    public int createStock(int id, int count, String name) {
+        return stockMapper.createStock(id, count, name);
+    }
+
 }

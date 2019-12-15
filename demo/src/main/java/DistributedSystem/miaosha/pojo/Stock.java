@@ -8,6 +8,37 @@ import lombok.Setter;
 @Getter
 @Setter
 public class Stock {
+    public Integer getId() {
+        return Id;
+    }
+
+    public void setId(Integer id) {
+        Id = id;
+    }
+
+    public String getName() {
+        return Name;
+    }
+
+    public void setName(String name) {
+        Name = name;
+    }
+
+    public Integer getCount() {
+        return Count;
+    }
+
+    public void setCount(Integer count) {
+        Count = count;
+    }
+
+    public Integer getSale() {
+        return Sale;
+    }
+
+    public void setSale(Integer sale) {
+        Sale = sale;
+    }
 
     private Integer Id;
 
@@ -16,7 +47,5 @@ public class Stock {
     private Integer Count;
 
     private Integer Sale;
-
-    private Integer Version;
 
 }

@@ -1,5 +1,6 @@
 package DistributedSystem.miaosha.kafka;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.kafka.clients.consumer.*;
 import org.apache.kafka.common.TopicPartition;
 
@@ -8,46 +9,30 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.*;
 
 public class kafkaConsumer {
 
-    private final static int minBatchSize = 20;
+    private ExecutorService threadPool;
 
-    public static void commit(List<String> topics) throws FileNotFoundException {
+    private List<kafkaConsumeTask> consumeTaskList;
 
-        Properties properties = kafkaUtil.getProperties("consumer");
-        KafkaConsumer<String, String> consumer = new KafkaConsumer<String, String>(properties);
-        consumer.subscribe(topics);
-        List<ConsumerRecord<String, String>> buffer = new ArrayList<>();
-        while (true) {
-            ConsumerRecords<String, String> records = consumer.poll(1000);
-            for (ConsumerRecord<String, String> record : records) {
-                buffer.add(record);
-            }
-            if (buffer.size() > minBatchSize) {
-                //do something
-                printBuffer(buffer);
-                consumer.commitAsync(new OffsetCommitCallback() {
-                    @Override
-                    public void onComplete(Map<TopicPartition, OffsetAndMetadata> map, Exception e) {
-                        if (e != null) {
-                            e.printStackTrace();
-                        } else {
-                            for (Map.Entry<TopicPartition, OffsetAndMetadata> entry : map.entrySet()) {
-                                System.out.println(entry.getKey());
-                                System.out.println(entry.getValue());
-                            }
-                        }
-                    }
-                });
-                buffer.clear();
-            }
+    public kafkaConsumer(int threadNum) throws Exception{
+        ThreadFactory threadFactory = new ThreadFactoryBuilder()
+                .build();
+        threadPool = new ThreadPoolExecutor(threadNum, threadNum, 0L, TimeUnit.MILLISECONDS, new
+                LinkedBlockingDeque<Runnable>(1024), threadFactory, new ThreadPoolExecutor.AbortPolicy());
+        consumeTaskList = new ArrayList<kafkaConsumeTask>(threadNum);
+
+        for(int i=0;i<threadNum;i++) {
+            kafkaConsumeTask consumeTask = new kafkaConsumeTask(i);
+            consumeTaskList.add(consumeTask);
         }
     }
 
-    private static void printBuffer(List<ConsumerRecord<String, String>> buffer) {
-        buffer.stream().map(ConsumerRecord::value).forEach(System.out::println);
+    public void execute() {
+        for(kafkaConsumeTask task:consumeTaskList) {
+            threadPool.submit(task);
+        }
     }
-
-
 }
