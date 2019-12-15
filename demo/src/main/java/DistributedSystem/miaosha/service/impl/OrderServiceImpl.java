@@ -86,11 +86,8 @@ public class OrderServiceImpl implements OrderService {
 
     }
 
-    //TODO 本地减库存线程不安全
     private Stock checkStockWithRedis(Integer sid) throws Exception {
-        // ver1. semaphore
         try {
-            //semaphore.acquire();
             Integer localResult = RedisPool.localDecrStock(sid);
             if (localResult == -1) {
                 System.out.println("本服务器内库存不足，秒杀失败\n");
@@ -98,11 +95,7 @@ public class OrderServiceImpl implements OrderService {
             }
         } catch (Exception e) {
             e.printStackTrace();
-        } finally {
-            //semaphore.release();
         }
-
-        // ver2. synchronized
 
         Stock stock = new Stock();
         boolean redisResult = RedisPool.redisDecrStock(sid, stock);
