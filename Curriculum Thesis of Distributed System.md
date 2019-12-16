@@ -1203,11 +1203,11 @@ Test result:
 
 ### 10. Division and Cooperation
 
-赵海凯：demo架构设计与代码编写，包括restful-API的接口,整体秒杀逻辑,各中间件耦合的部分代码。Kafka集群搭建与调优和Kafka有关代码的编写，测试方案设计与服务部署。
+赵海凯:	Demo architecture design and code writing, including restful-API interface, overall spike logic, part of the code coupled with each middleware. Kafka cluster setup and tuning, Kafka related code writing, test solution design and service deployment.
 
-王泽宇：新架构的设计与代码重构；Redis部分环境配置及在本项目中的部署；Redis和Redisson部分java代码实现；参与多线程设计；代码测试调优。
+王泽宇:	New architecture design and code refactoring; Redis part of the environment configuration and deployment in this project; Redis and Redisson part of the java code implementation; participating in multi-threaded design; code test tuning.
 
-谢天翊：nginx配置部署以及添加新模块 jvm性能调优 参与多线程设计 Mysql接口优化.
+谢天翊:	nginx configuration deployment and adding new modules jvm performance tuning Participate in multi-thread design Mysql interface optimization.
 
 #### Appendix: How to start the Service
 
@@ -1233,9 +1233,62 @@ java -jar your-jar.jar
 
 4.open http://your-server-ip-address:8088/swagger-ui.html#/ to test your Restful API.
 
-####文件说明
+####File Description	
 
-​		
+```python
+src
+	main
+  	java
+  		DistributedSys.miaosha
+      	controller
+        	IndexController.java #初始化数据库和Redis以及库存处理
+        dao
+        	StockMapper.java			#数据库查询库存语句
+          StockOrderMapper.java #数据库订单查询语句
+        kafka
+        	#kafka消费者和生产者队列处理
+          kafkaConsumer.java
+          kafkaConsumerTask.java
+          kafkaProducer.java
+          kafkaUtil.java
+          miaoshaConsumer.java
+        mysql
+        	mysqlConnect.java
+        pojo
+        	stock.java						#库存处理
+          stockOrder.java				#库存订单处理
+        redis
+        	RedisLimit.java				#Redis订单限制
+          RedisPool.java				#Redis令牌桶
+        service
+        	api
+          	OrderService.java
+            StockService.java
+          impl
+          	BigThread.java			#主线程
+            OrderServiceImpl.java	#订单与数据库和Redis关系
+            StockServiceImpl.java 
+        util
+        	SpringBeanFactory			#设置环境
+  		startApplication.java			#运行此函数
+  		Swagger2.java							#swagger界面
+      WebConfig.java						#添加资源和句柄
+  	resources
+    	#环境配置
+    	application.porperties		
+      customer.json							
+      kafka-properties.json
+  test
+  #对应的测试代码
+  	DistributedSystem.miaosha.redis
+    	RedisPoolTest.java				
+      RedisTest.java
+    kafka
+    	kafkaConsumerTest.java
+      kafkaMultiThreadTest.java
+      kafkaProducerTest.java
+      kafkaUtilTest.java
+```
 
 #### How to use Jmeter to test
 
