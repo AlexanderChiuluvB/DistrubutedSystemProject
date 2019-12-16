@@ -1130,15 +1130,13 @@ Execute the ./configure command in the installation directory. The parameter of 
 --prefix=/usr/local/nginx --add-module=/root/nginx
 ```
 
-commands for the nginx is like
+commands for the nginx are
 
 ```
-/path/nginx 					#to start
-/path/nginx -s quit 	#to exit
-/path/nginx -s reload #to reload the configuration file
+/path/nginx -s reload #重新加载配置文件
+/path/nginx 					#启动nginx
+/path/nginx -s quit		#退出nginx
 ```
-
-
 
 ## 9. Mysql
 
@@ -1234,6 +1232,10 @@ java -jar your-jar.jar
 ```
 
 4.open http://your-server-ip-address:8088/swagger-ui.html#/ to test your Restful API.
+
+####文件说明
+
+​		
 
 #### How to use Jmeter to test
 
