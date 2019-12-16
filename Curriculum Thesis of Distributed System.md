@@ -1130,6 +1130,14 @@ Execute the ./configure command in the installation directory. The parameter of 
 --prefix=/usr/local/nginx --add-module=/root/nginx
 ```
 
+commands for the nginx is like
+
+```
+/path/nginx 					#to start
+/path/nginx -s quit 	#to exit
+/path/nginx -s reload #to reload the configuration file
+```
+
 
 
 ## 9. Mysql
