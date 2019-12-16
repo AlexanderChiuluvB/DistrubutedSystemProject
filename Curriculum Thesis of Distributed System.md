@@ -1321,14 +1321,3 @@ src
 ![](https://github.com/daydreamdev/MeetingFilm/raw/master/pic/seconds-kill/5.png)
 
 Finally, go to swagger-ui website and run /checkStock api to see whether your stock has been sold out all.
-
-
-
-### Ref
-
-*《深入理解Nginx》陶辉*
-
-*《Nginx模块开发指南》罗剑锋*
-
-*Emiller’s Guide To Nginx Module Development* https://www.evanmiller.org/nginx-modules-guide.html
-
