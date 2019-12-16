@@ -2,6 +2,8 @@
 
 ## 					E-commerce Spike Simulation
 
+###王泽宇 赵海凯 谢天翊
+
 
 
 ## 1.Requirment Analysis
