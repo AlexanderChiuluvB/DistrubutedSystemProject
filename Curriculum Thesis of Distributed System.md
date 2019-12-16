@@ -66,10 +66,12 @@ Suppose in a limited-time offer scene, we have 100 merchandise in total. At the 
   In the theory of data base, the Isolation of transactions is a trade-off with the through put of the transaction in data base. Strict Isolation of the transactions can ensure ACID, but it put to much limit on through put, suitable for the kind of transactions that require absolute consistency, like banking systems. But in our case, it would bring too much delay, leading to a great buying latency, meaning that it isn't suitable. Thus, based on different process that are suitable or not, mysql raised 4 levels of transaction isolation.
 
   - READ UNCOMMITTED: It does not require transactions to be isolated, which can lead to dirty reads. This non-isolation does not apply to shopping systems.
+
 - READ COMMITTED : There is a certain transaction isolation. And to avoid dirty reading, one thread cannot read transactions that are not committed by another thread. There are also problems of phantom reading.
+
   - REPEATABLE READ: Stronger transaction isolation. It uses the MVCC (Multi-Version Concurrency Control) mechanism, which is actually the realization of an optimistic locking concept. Thread A's read operation will not update the version number. At this time, other threads have modified the data, and even if they submit, they will not read it for thread A. The thread does not update the version number when reading, so it reads the historical version. When writing, it will update the version number to the latest version. When the write fails to meet the consistency condition (merge failure), it will be abandoned. Partially solved the problem of phantom reading. This is also the default transaction isolation level for MySQL.
   - SERIALIZABLE :Regardless of reading and writing directly locking the table, other operations cannot be performed, and there is only one user at a certain timetable. The level of concurrency is 1. Completely solved the problem of phantom reading. Data consistency is absolutely guaranteed.
-  
+
 - Distributed lock based on Redis
 
   ​	The designing pattern of Redis doesn't support transaction. But according to the official documents of Redis we can infer that the ACID attributes of trandaction in Redis can be realized by using Lua script which is based on the API `call` provided by Redis in an atomic way. Which means that in order to realize the attributes of transactions in an distributed environment, programmers need to design a suitable algorithm. 
@@ -97,6 +99,7 @@ Moreover, the semantics of Zookeeper distributed locks are clearer and simpler, 
   //Zookeeper的锁,尝试创建一个znode节点"myMutex"
   mutex = new InterProcessMutex(curatorFramework, "/myMutex");
 ```
+
 Then before get access to redis, we use mutex.acquire() to get the zk lock, finally we release the lock when the transaction is finished.
 
 
@@ -133,7 +136,7 @@ Bottle neck of the performance: Mysql update rate is slower than expected, there
 
 ### 4.2 After Improvement：
 
-![image-20191214135650932](%E5%88%86%E5%B8%83%E5%BC%8F%E7%B3%BB%E7%BB%9F%E5%BC%80%E9%A2%98%E8%AE%BA%E6%96%87.assets/image-20191214135650932.png)
+![image-20191214135650932](/Users/ken_xie/Downloads/分布式系统开题论文.assets/image-20191214135650932.png)
 
 - The request first arrives at a Portal Server, where the maximum traffic is restricted by the token bucket algorithm, and then the request is hashed to several Servers through the Nginx reverse proxy;
 - Each server presets a certain amount of local inventory according to the hardware processing capacity, and at the same time adds a certain amount of buffer to avoid the failure of a single server,which would cause reducing the total local inventory and preventing the product from being sold;
@@ -257,7 +260,7 @@ The RDB persistence performs point-in-time snapshots of your dataset at specifie
 
 According to the setting, the RDB method will check whether the number of writes exceeds n at every t interval, and if it exceeds, the persistence will be performed once.
 
-<img src="%E5%88%86%E5%B8%83%E5%BC%8F%E7%B3%BB%E7%BB%9F%E5%BC%80%E9%A2%98%E8%AE%BA%E6%96%87.assets/image-20191214175536375.png" alt="image-20191214175536375" style="zoom:30%;" />
+<img src="/Users/ken_xie/Downloads/分布式系统开题论文.assets/image-20191214175536375.png" alt="image-20191214175536375" style="zoom:30%;" />
 
 Whenever Redis needs to dump the dataset to disk, this is what happens:
 
@@ -271,7 +274,7 @@ RDB's persistence can be selected through a background process in order to maint
 
 The AOF persistence logs every write operation received by the server, that will be played again at server startup, reconstructing the original dataset. Commands are logged using the same format as the Redis protocol itself, in an append-only fashion. Redis is able to rewrite the log in the background when it gets too big.
 
-<img src="%E5%88%86%E5%B8%83%E5%BC%8F%E7%B3%BB%E7%BB%9F%E5%BC%80%E9%A2%98%E8%AE%BA%E6%96%87.assets/image-20191214181125138.png" alt="image-20191214181125138" style="zoom:33%;" />
+<img src="/Users/ken_xie/Downloads/分布式系统开题论文.assets/image-20191214181125138.png" alt="image-20191214181125138" style="zoom:33%;" />
 
 - Redis forks, so now we have a child and a parent process.
 - The child starts writing the new AOF in a temporary file.
@@ -337,7 +340,7 @@ In conclusion, the abilities of Redis include
 
 The graph below shows our configuration on Redis Cluster.
 
-<img src="%E5%88%86%E5%B8%83%E5%BC%8F%E7%B3%BB%E7%BB%9F%E5%BC%80%E9%A2%98%E8%AE%BA%E6%96%87.assets/image-20191215114430222.png" alt="image-20191215114430222" style="zoom:47%;" />
+<img src="/Users/ken_xie/Downloads/分布式系统开题论文.assets/image-20191215114430222.png" alt="image-20191215114430222" style="zoom:47%;" />
 
 #### 5.3.2 Redis Cluster Communication
 
@@ -353,12 +356,12 @@ There are 16384 hash slots in Redis Cluster, and to compute what is the hash slo
 
 Below is our configuration about redis cluster:
 
-![image-20191214191807685](%E5%88%86%E5%B8%83%E5%BC%8F%E7%B3%BB%E7%BB%9F%E5%BC%80%E9%A2%98%E8%AE%BA%E6%96%87.assets/image-20191214191807685.png)
+![image-20191214191807685](/Users/ken_xie/Downloads/分布式系统开题论文.assets/image-20191214191807685.png)
 
 #### 5.3.4 Redis master-slave replication
 
 1. Initialization from the server
-      When the slave server starts, it sends a SYNC command to the master server to request data synchronization. After receiving the message, the main server performs RDB persistence and generates a snapshot file. At the same time, the main server caches the newly executed commands during the snapshot generation. After the snapshot file is generated, the master server sends the RDB snapshot file and the cached command to the slave server. The slave server first loads the received RDB snapshot file, and then executes the cached new command to complete the master and slave data. The initial synchronization operation.
+   When the slave server starts, it sends a SYNC command to the master server to request data synchronization. After receiving the message, the main server performs RDB persistence and generates a snapshot file. At the same time, the main server caches the newly executed commands during the snapshot generation. After the snapshot file is generated, the master server sends the RDB snapshot file and the cached command to the slave server. The slave server first loads the received RDB snapshot file, and then executes the cached new command to complete the master and slave data. The initial synchronization operation.
 2. Keep sync from the server
    After the slave server is synchronized, all commands received by the master server will be asynchronously sent to the slave server to maintain the consistency of the master and slave data. In this way, the read and write separation of Redis is achieved. The read operation acts on the slave node and the write operation acts on the master node.
 3. After the server failure
@@ -402,7 +405,7 @@ Redis Cluster is not able to guarantee strong consistency. In practical terms th
 
 ### 5.4 Token Bucket Algorithm
 
-<img src="%E5%88%86%E5%B8%83%E5%BC%8F%E7%B3%BB%E7%BB%9F%E5%BC%80%E9%A2%98%E8%AE%BA%E6%96%87.assets/image-20191214201050745.png" alt="image-20191214201050745" style="zoom:47%;" />
+<img src="/Users/ken_xie/Downloads/分布式系统开题论文.assets/image-20191214201050745.png" alt="image-20191214201050745" style="zoom:47%;" />
 
 The token bucket algorithm is mainly used to limit traffic. Tokens are generated and added to the token bucket at a constant speed. Each request can continue to process business logic after the token is obtained. Requests that do not obtain a token are directly rejected. There are two reasons to use the token bucket algorithm:
 
@@ -413,7 +416,7 @@ The token bucket algorithm is mainly used to limit traffic. Tokens are generated
 - Function interface
 
   - boolean RedisPool.acquireToken (): apply for a token, return true if successful, otherwise return false
-  
+
 - Method implementation:
 
   - TokenBucket private class
@@ -421,7 +424,7 @@ The token bucket algorithm is mainly used to limit traffic. Tokens are generated
     Because the token bucket is operated by a single machine and a single process, there is no need to set a separate lock. Using the synchronized feature of Java, only one thread can manipulate the tokens variable at a time.
 
     ```java
-  class TokenBucket{
+    class TokenBucket{
         private Integer tokens=50000;
         private static Integer maxTokens = 500000;
     
@@ -442,9 +445,9 @@ The token bucket algorithm is mainly used to limit traffic. Tokens are generated
         }
     }
     ```
-  
+
   - Methods of the RedisPool class involving token buckets:
-  
+
     Use @Scheduled annotation to call timing method
 
     ```java
@@ -458,7 +461,7 @@ The token bucket algorithm is mainly used to limit traffic. Tokens are generated
             return bucket.decrToken();
       }
     ```
-    
+
     
 
 ### 5.5 Redisson
@@ -492,6 +495,7 @@ In addition, redisson's locking mechanism is not busy waiting, but based on the 
                   "return nil; " +
               "end; " +
               "return redis.call('pttl', KEYS[1]);"
+
 ```
 
 1. If you find that the current key does not exist through the `exists` command, that is, the lock is not occupied, execute` hset` to write Hash type data **key: global lock name** (such as shared resource ID), **field: Lock instance name** (Redisson client ID: thread ID), **value: 1**, and execute `pexpire` to set the expiration time for the key, returning the null value` nil`, and the lock acquisition is successful.
@@ -520,6 +524,7 @@ Similar to Redisson lock, Redisson release lock is also completed by lua script:
                         "return 1; "+
                     "end; " +
                     "return nil;",
+
 ```
 
 1. The key does not exist, indicating that the lock has been released. Execute the `publish` command directly to release the lock release message and return` 1`.
@@ -530,7 +535,7 @@ Similar to Redisson lock, Redisson release lock is also completed by lua script:
 - Function Interface
 
   - boolean redisDecrStock (Integer sid, Stock s): Look at Redis and try to reduce inventory
-  
+
 - Method Implementation
 
   - After redisson tried to acquire the lock
@@ -559,8 +564,9 @@ Similar to Redisson lock, Redisson release lock is also completed by lua script:
             System.out.println("Now in Redis, STOCK ="+(stock-1)+" SALE="+(sale+1));
             return true;
       }
+    
     ```
-  
+
     
 
 #### 5.5.2 Limitations of Redisson locks
@@ -658,6 +664,7 @@ Optimization of server configuration of Kafka
 # 用于接受并处理网络请求的线程数，默认为3，实际上为Kafka内部轮询机制中负责读取请求的线程数。
 # 本项目由于上下游并发请求量过大，因此为了尽可能减少io等待，配置线程数量为cpu核数+1
 num.network.threads=9
+
 ```
 
 
@@ -665,19 +672,23 @@ num.network.threads=9
 # 负责磁盘io操作的线程数，默认为8，因为Kafka生产和消费过程中都会伴随着
 # 数据的落盘，为了提高入队和出队的速率，可以适当增加处理磁盘的io线程数
 num.io.threads=16
+
 ```
 
 
 ```markdown
 # 每隔1s就刷写一次磁盘
 log.flush.interval.ms=1000
+
 ```
 
 
 ```Markdown
 # 设定发送消息后不需要Broker端返回确认，虽然存在丢失数据的风险，但是由于本项目对数据完整性以及数据消费顺序没有要求，因此吞吐量能达到最大
 acks: 0
+
 ```
+
 #### Implementation of Kafka
 
 * Producer
@@ -696,6 +707,7 @@ We implement a static method 'sendMessage', and the code logic is quite simple.W
             ProducerRecord<String, String> record = new ProducerRecord<String, String>(topic, msg);
             producer.send(record);
         }
+
 ```
 
 
@@ -730,10 +742,13 @@ We need to override the listen method of the spring-kafka KafkaListener, basic l
             ack.acknowledge();
         }
     }
+
 ```
+
 For further configuration, we can use the kafkaFactory Bean.
 
 Here we set up the basic config, concurrency number and batch consumption mode.
+
 ```java
 @Bean
     KafkaListenerContainerFactory<?> batchFactory() {
@@ -746,6 +761,7 @@ Here we set up the basic config, concurrency number and batch consumption mode.
         factory.getContainerProperties().setAckMode(AbstractMessageListenerContainer.AckMode.MANUAL_IMMEDIATE);
         return factory;
     }
+
 ```
 
 Second version:
@@ -780,6 +796,7 @@ public class kafkaConsumer {
         }
     }
 }
+
 ```
 
 KafkaConsumeTask.java
@@ -814,6 +831,7 @@ public class kafkaConsumeTask implements Runnable {
             }
         }
     }
+
 ```
 
 So at the beginning of the project, we create a consumer object and run the execute method, then a total amount of 100 threads will listen to its own partition separately.
@@ -821,14 +839,15 @@ So at the beginning of the project, we create a consumer object and run the exec
 ```java
  kafkaConsumer consumer=new kafkaConsumer(100);
  consumer.execute();
+
 ```
 
 
 During Experiment, we find out that the first version has a serious problem of consumption backlog.And the consumption speed is quite slow. While the consumption speed of second version is relatively satisfactory and enough to handle the vast amount of requests.
 
-### 7.Bottleneck of the seckilling system
+## 7.Bottleneck of the seckilling system
 
-####Problem 1: Kafka consuming speed is slow and the occurance of consumption backlog
+### Problem 1: Kafka consuming speed is slow and the occurance of consumption backlog
 
 At the beginning, the partition number of Kafka clusters is set to 5, meaning that each node is responsible for a single partition.We find out that with this configuration, the enqueing speed is much faster than the dequeing speed, vast amount of http requests are backloged wihtin Kafka. The unsatisfactory result of the extremely-slow consumption speed it that the goods can not be sold out immediately, violating the basic principles of a seckilling system.
 
@@ -876,7 +895,7 @@ Actually, the biggest bottleneck of the system is network bandwidth.Since we ini
 
 
 
-####JVM optimization with high concurrency
+### Problem2: JVM optimization with high concurrency
 
 During experiment, we also find out that the serive would crash occasionally, since hadnling large amount of thread simultaneously will definitely pose huge pressure on the JVM heap space. And the production of vase amount of objects also means we need to take garbage collection (GC) into consideration.
 
@@ -894,14 +913,17 @@ Configuration:
 
 ```
 -XX:+UseParallelGC：代表垃圾回收策略为并行收集器(吞吐量优先)，即在整个扫描和复制过程采用多线程的方式来进行，适用于多CPU、对暂停时间要求较短的应用上
+
 ```
 
 ```
 -XX:ParallelGCThreads=8：配置并行收集器的线程数，即：同时多少个线程一起进行垃圾回收。配置为单机处理器数目8
+
 ```
 
 ```
 -XX:+UseAdaptiveSizePolicy：设置此选项后，并行收集器会自动选择年轻代区大小和相应的Survivor区比例
+
 ```
 
 ```
@@ -921,18 +943,19 @@ Configuration:
 
 设置每个线程的栈大小。在相同物理内存下，减小这个值能生成更多的线程;
 
+
 ```
 
-####Problem 3: Failing of Redis lock based on Redission with relatively high concurrency.
+### Problem 3: Failing of Redis lock based on Redission with relatively high concurrency.
 
 During experiemnt, we find out that when we test the system with relatively high concurrency, like more than 10000 HTTP requests per second, the concurrecny control with Redis lock will fail working. To be specfic, during the test we find out that sometimes the system may oversell the products of one or two.  We guessed that is is probably caused by the third-party package Redission we use, maybe it it is not that reliable as its official website have claimed. 
 
 We come out a compromised solution to this problem: we set the transaction isolation level in MySQL to be **serializable**, the most serious level, since effectiveness is not that important for background thread. And before MySQL database is updated, we check the stock whether stock number is above zero. If not, send message immediately and cancel the order and payment of the certain client. As concerned, this resolution is not that ideal and needs to be optimized in the future work.
 
 
-### 8. Nginx
+## 8. Nginx
 
-####A brief introduction to Nginx
+### 8.1 A brief introduction to Nginx
 
 Nginx(pronounced "engine X") is a web server which can also be used as a reverse proxy , load balancer, mail proxy and HTTP cache. It is renowned for its stability, rich functionality, and low system resource consumption. It takes up relatively small amount of memory and is very good at processing concurrent requests. 
 
@@ -948,9 +971,9 @@ The main features of Nginx
 - Name- and IP address-based virtual servers
 - IPv6-compatible
 
-#### Data structure of Nginx
+### 8.2 Data structure of Nginx
 
-##### Essential data Sructures
+#### Essential data Sructures
 
 To provide with a more flexible functionality, Nginx packed almost every basic type into its own type. 
 
@@ -961,6 +984,7 @@ typedef struct {
   size_t	len;
   u_char	*data;
 } ngx_str_t;
+
 ```
 
 The code above is how nginx pack for its own string type. The reason why Nginx do this is that Nginx is dealing with http requests sometimes where a string can be divided into several segments. By recording the head and length of the intended string segment, Nginx frees the user from being used a large chunk of memory to store the segmented information.
@@ -980,13 +1004,12 @@ typedef struct {
     ngx_uint_t        nalloc;
     ngx_pool_t       *pool;
 } ngx_list_t;
+
 ```
 
 Like the ngx_str_t we have analysed above, differing from the traditional data structure of list, nginx add void pointers to a node that would allow a more flexible data structure.
 
 ![avatar](分布式系统开题论文.assets/ngx_list_t.jpg)
-
-
 
 
 
@@ -996,20 +1019,128 @@ Intention and goal: Requests sending to a single server would overload the serve
 
 Realization: As in this project, the information for the good is contained in URI. we add the new module to Nginx by reconfigure it and changing its configure file. And the new module is the one that realize consistent hash algorithm.
 
-##### Coding
+##### Code Analysis
 
- 
+The code flow of a new module is this:
 
-####How to use Nginx in this project
+Client sends HTTP request → Nginx chooses the appropriate handler based on the location config → (if applicable) load-balancer picks a backend server → Handler does its thing and passes each output buffer to the first filter → First filter passes the output to the second filter → second to third → third to fourth → etc. → Final response sent to client
 
-the configure
+Then our module will follow the above process and constantly call the callback function.
 
-make
+We define a server configuration structure for storing configuration information
 
-nginx.conf
+```c
+typedef struct {
+    ngx_array_t                     *values;
+    ngx_array_t                     *lengths;
+} ngx_http_upstream_consistent_hash_srv_conf_t;
+```
+
+In addition, four structures are defined according to the needs of consistent hashing, which respectively store information of a peer node, information of a hash bucket, information of a continuum, and information of a hash node. Peer nodes are all divided by the hash algorithm. After the storage domain is allocated, a hash peer node stores a hash bucket. This hash bucket has a member array of hash nodes and a continuum, and this continuum is the structure we store.
+
+```
+ngx_http_upstream_consistent_hash_node
+ngx_http_upstream_consistent_hash_continuum
+ngx_http_upstream_consistent_hash_buckets
+ngx_http_upstream_consistent_hash_peer_data_t
+```
+
+There are two important functions next, one is to initialize the peer node function, and the other is the execution function of the consistent hash.
+
+```c
+static ngx_int_t ngx_http_upstream_init_consistent_hash(ngx_conf_t*, 
+        ngx_http_upstream_srv_conf_t*);
+```
+
+```c
+static char *
+ngx_http_upstream_consistent_hash(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+```
+
+Let's look at the first function first.
+
+As an initialization function, this function is very closely related to the constructor provided by nginx. In the function, the hash bucket and hash continuum are initialized first, and the peer initialization function of the formal parameter server configuration structure is assigned the value we defined The peer initialization function. Then assigns the elt pointer of the server configuration structure to the upstream server class. Then allocates space to the continuum and hash nodes. The node pointer in the continuum is assigned the variable address allocated by the lever.
+
+Here are some key codes
+
+```c
+buckets = ngx_pcalloc(cf->pool, 
+            sizeof(ngx_http_upstream_consistent_hash_buckets));
+
+us->peer.init = ngx_http_upstream_init_consistent_hash_peer;
+ continuum = ngx_pcalloc(cf->pool, 
+            sizeof(ngx_http_upstream_consistent_hash_continuum));
+continuum->nodes = ngx_pcalloc(cf->pool, 
+            sizeof(ngx_http_upstream_consistent_hash_node) * points);
+
+qsort(continuum->nodes, continuum->nnodes, 
+            sizeof(ngx_http_upstream_consistent_hash_node), 
+            (const void*) ngx_http_upstream_consistent_hash_compare_continuum_nodes);
+
+for (i = 0; i < MMC_CONSISTENT_BUCKETS; i++) {
+        buckets->buckets[i] = 
+            ngx_http_upstream_consistent_hash_find(continuum, step * i);
+    }
+```
 
 
-### 9. Mysql
+
+Now look at the second function.
+
+Use the nginx configuration server module function to assign values to the upstream server configuration module, and use the upstream server configuration module to assign values to the consistent hash configuration module. Then assign values to the member variables of the script compilation structure. Finally, pass the initialization function of the consistent hash to The peer initialization member variables of the upstream server configuration structure are then set to flag.
+
+```c
+uscf = ngx_http_conf_get_module_srv_conf(cf, ngx_http_upstream_module);
+    uchscf = ngx_http_conf_upstream_srv_conf(uscf,
+                                          ngx_http_upstream_consistent_hash_module);
+                                          
+uscf->peer.init_upstream = ngx_http_upstream_init_consistent_hash;
+
+    uscf->flags = NGX_HTTP_UPSTREAM_CREATE
+        |NGX_HTTP_UPSTREAM_WEIGHT;
+```
+
+### How to use Nginx in this project
+
+The configuration is relatively simple. Add the upstream module in the http module and set the instruction consistent_hash to the consistent hash. The parameter is set to uri. In the server module, all URLs are identified and guided to the upstream module.
+
+```
+ 35 upstream model {
+ 36                 consistent_hash $request_uri;
+ 37                 server 172.101.8.2:8088;
+ 38                 server 172.101.8.3:8088;
+ 39                 server 172.101.8.4:8088;
+ 40                 server 172.101.8.5:8088;
+ 41                 server 172.101.8.6:8088;
+ 42                 server 172.101.8.7:8088;
+ 43 }
+```
+
+```
+ 53         location / {
+ 54                         proxy_pass http://model;
+ 55         #    root   html;
+ 56         #    index  index.html index.htm;
+ 57         }
+```
+
+Execute the ./configure command in the installation directory. The parameter of the command is. The former is the root path after installation and deployment, and the latter is the newly added module path. Then execute the make command and restart nginx.
+
+```
+--prefix=/usr/local/nginx --add-module=/root/nginx
+```
+
+commands for the nginx is like
+
+```
+/path/nginx 					#to start
+/path/nginx -s quit 	#to exit
+/path/nginx -s reload #to reload the configuration file
+```
+
+
+
+## 9. Mysql
 
 This part we mainly introduce how we use Mybatis to persist the stock and order info in Mysql.We write a StockMapper interface which contains all the sql we use.
 
@@ -1042,50 +1173,35 @@ public interface StockMapper {
     int update(Stock stock);
 
 }
+
 ```
 
 
 
-### 10. 测试方案
 
-### Test Plan
 
-本项目使用Apache Jmeter来模拟大量的HTTP请求
+## 10. Test Plan
 
 In this project, we use Apache Jmeter to simulate vase amount of HTTP requests sent to the seckilling system.
-
-jmx配置：模拟生成1千万个http请求,产生http请求的速度制约于秒杀系统的性能。
 
 Configuration of jmx file: We simultaneously produce 10 million HTTP request in 10 seconds, the speed of producing http is propotional to the performance of the seckilling system.
 
 Test result:
 
-架构改建前：
+**Before improvement:**
 
-Before improvement:
-
-- Redis缓存+Kafka削峰+Mysql乐观锁更新方案：
 - Solution with Redis+Kafka+Mysql(Optimistic lock)
   maximum tps: 600/s before the products are sold out, 1300/s after sold out.
 
-  最高tps：秒杀过程中600/s,库存为0之后继续访问的请求tps1300/s
-
-- Redis缓存+Kafka削峰+Mysql乐观锁更新+Nginx分发到7台服务器方案
 - Solution with Redis+Kafka+Mysql(Optimistic lock)+ Nginx proxy to 7 machines
   maximum tps:  1000/s before the products are sold out, 2500/s after sold out.
-  
-  最高tps:  秒杀过程中tps1000/s，库存为0之后继续访问的请求tps2500/s
 
-架构改进后：
+**After improvement:**
 
-- Redis缓存+Kafka削峰+Redis分布式锁 秒杀服务单机部署：
 - Solution with Redis+Kafka+Redis distributed lock+ nginx proxy to 7 machines
 - maximum tps:  16000-18000/s
-  最高tps： 16000-18000/s
-- Redis缓存+Kafka削峰+Zookeeper分布式锁 秒杀服务单机部署：
 - Solution with Redis+Kafka+Zookeeper distributed lock+ nginx proxy to 7 machines
 - maximum tps:  16000-18000/s
-  最高tps： 16000-18000/s
 
 ### 10. Division and Cooperation
 
@@ -1095,8 +1211,7 @@ Before improvement:
 
 谢天翊：nginx配置部署以及添加新模块 jvm性能调优 参与多线程设计 Mysql接口优化.
 
-### 附录：程序使用
-#### How to start the Service
+#### Appendix: How to start the Service
 
 * Deploy locally
 
@@ -1115,6 +1230,7 @@ Before improvement:
 
 ```
 java -jar your-jar.jar 
+
 ```
 
 4.open http://your-server-ip-address:8088/swagger-ui.html#/ to test your Restful API.
@@ -1147,4 +1263,9 @@ Finally, go to swagger-ui website and run /checkStock api to see whether your st
 
 ### Ref
 
-tbc...
+*《深入理解Nginx》陶辉*
+
+*《Nginx模块开发指南》罗剑锋*
+
+*Emiller’s Guide To Nginx Module Development* https://www.evanmiller.org/nginx-modules-guide.html
+
