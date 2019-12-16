@@ -1,166 +1,90 @@
-## 分布式系统课程项目——电商秒杀模拟
+# Distributed System Course Project
 
-##Distributed System Course Project
-
-###E-commerce Spike Simulation
+## 					E-commerce Spike Simulation
 
 
 
-### 1. 秒杀业务目标分析
+## 1.Requirment Analysis
 
-###1.Requirment Analysis
-
-- 一致性：库存量少，一般秒杀请求量远远大于库存数量，因此在大并发更新的时候要防止超卖现象发生。
 - Consistency: Stock is low, therefore requests are a lot more than the stock. During the processing of concurrent updating operation, we need to prevent the scenario of overselling. 
-- 高可用：系统能够抗住大量的流量同时保证不宕机。即使部分节点宕机也能保证正常工作
 - High usability: Ensure that the serive system can endure large request influx, and mechanisms are needed to prevent the system from failure or crushing.
-- 透明性
 - Transparency
-  - 访问透明性、位置透明性、移动透明性：由http协议和Internet、Ethernet可以自动实现。
   - Access transparency, location transparency, and mobile transparency: can be automatically implemented by the http protocol and the Internet and Ethernet.
-  - 性能透明性：秒杀涉及大量并发读和并发写，而且网络流量暴增，网络带宽压力会加大，所以要支持高并发访问。当负载爆发式加重时，服务端可以自动配置以提高性能。
   - Performance transparency: spikes involve a large number of concurrent reads and concurrent writes, and network traffic surges, network bandwidth pressure will increase, so we must support high concurrent access. When the load is explosive, the server can automatically configure it to improve performance.
-  - 并发透明性：大量的请求线程不能互相干扰。这是系统设计的核心部分。
   - Concurrency transparency: A large number of request threads cannot interfere with each other. This is a core part of system design.
-  - 伸缩透明性：当服务器性能升级，或者增加若干台服务器时，性能可以近似线性增长。
   - Scalability and transparency: When the server performance is upgraded or several servers are added, the performance can increase approximately linearly.
-  - 故障透明性：当某个服务器发生故障，不会导致服务彻底崩溃，有一定的容错机制
   - Fault transparency: when a server fails, it will not cause a complete crash of the service, and there is a certain fault tolerance mechanism
-- 业务流程简单：下购买订单->数据库库存减少->响应客户->客户支付订单
 - Simplification of the procedure of the operation: Submit the order --> Reduce the stock --> Pay for the bill
-- 读多写少：大量的HTTP请求都是读请求，写请求即更改数据库的请求占相对少数，因此提高数据库的读取速度将是性能提升的一关键。
 - The problem of multiplt reading and little writing: Most HTTP messages are for read method compared to the writing messages which are relatively little. So enhancing the reading speed of the database would be one of the key to elavate the performance.
 
-### 2. 架构设计思路
-
-###2.Design strategy
-
-所有措施的根本目的都是为了把请求尽量拦截在上游，尽可能减少对MYSQL数据库的访问。
+## 2.Design strategy
 
 All measure are intended to intercept the request at the upper stream, minimizing the access request to the database as many as possible. 
 
-- 限流
 - Flux limit
 
-根据现有服务器的处理能力，限制超载流量，使得爆发式的流量在服务前端就被拒绝，使得进入任何中间件和其他后端服务器的流量尽可能少。
+Concept: First block most of the user flow with a max limit server ability, and then only an acceptable number of users are able to access the backend server.
 
-具体实现: Redis令牌桶限流算法，Redis抗住绝大部分无用请求
+Implementation Method: Redis token bucket limitation algorithms block the majority of the flow.
 
-Conceptoin: First block most of the user flow with a small remanent of user to be able to access the backend server.
-
-Realizing Method: Redis token bucket limitation algorithms block the majority of the flow.
-
-- 削峰
 - Peak clipping
-
-秒杀请求在时间上高度集中于某一个时间点，瞬时流量容易冲垮系统。因此需要对瞬时流量进行削峰处理，缓冲瞬时流量，对时间进行解耦合，尽量让服务器对资源进行平缓处理
-
-具体实现：大量下单请求先经过Kafka队列入队，然后再缓慢出队。
 
 Concept: The spike request is highly concentrated on a certain point in time, and the instantaneous traffic will easily overwhelm the system. Therefore, it is necessary to perform peak clipping on the instantaneous traffic, buffer the instantaneous traffic, and decouple the time, so as to allow the server to gently handle the resources
 
-Specific implementation: A large number of order requests first enter the queue through the Kafka queue, and then slowly dequeue.
+Implementation Method: A large number of order requests first enter the queue through the Kafka queue, and then slowly dequeue.
 
-- 异步
-- Asychronysation
-
-把同步的下单请求改为异步，提高并发量，本质上也是削峰操作
-
-具体实现：Redis成功预减库存后，新开一个线程发送给Kafka
+- Asynchronization
 
 Concept: When creating the order, accessing Redis to check whether the stock is enough is needed. only a small partition of the requests that succeeded can create orders.
 
-Realizing method: We put the information of the merchandise in the buffer in Redis to reduce the access to data base.
+Implementation Method: We put the information of the merchandise in the buffer in Redis to reduce the access to data base.
 
-- 充分利用缓存
 - Use the cache fully
 
-创建订单的时候，每次都需要查询Redis判断库存是否足够。只有少部分成功的请求才会创建订单。
+Concept: When you create an order, you need to query Redis every time to determine whether the inventory is sufficient. Only a few successful requests will create an order.
 
-Consept: When you create an order, you need to query Redis every time to determine whether the inventory is sufficient. Only a few successful requests will create an order.
+Implementation Method: Product information can be placed in the Redis cache to reduce database queries.
 
-具体实现：可以把商品信息放在Redis缓存中，减少数据库查询。
-
-Specific implementation: Product information can be placed in the Redis cache to reduce database queries.
-
-- 负载均衡
 - Load balancing
-
-利用Nginx等使用多个服务器并发处理请求，以减少单个服务器的压力.
 
 Concept: Requests sending to a single server would overload the server and potentially cause the server to break down. If there are a number of servers, we can distribute the requests over to different servers to reduce the pressure of one single server.
 
-Realizing method: Nginx can be used as a load balancer. In our case, as we have 8 servers, and also due to the the flexibility of Nginx, there are two solutions. The first one is to send the requests using the Round Robin, sending to the servers. The second one is to distribute the requests by URI. 
+Implementation Method: Nginx can be used as a load balancer. In our case, as we have 8 servers, and also due to the the flexibility of Nginx, there are two solutions. The first one is to send the requests using the Round Robin, sending to the servers. The second one is to distribute the requests by URI. 
 
-### 3. 高并发下的数据安全与解决方案
 
-###3.The solution to data security in high concurrency
 
-- 超卖现象
-- THe phenomenon of selling more merchandise than the stock
+## 3.The solution to data security in high concurrency
 
-假设某个抢购场景中，我们一共只有100个商品，在最后一刻，我们已经消耗了99个商品，仅剩最后一个。这个时候，系统发来多个并发请求，这批请求读取到的商品余量都是1个，然后都通过了这一个余量判断，最终导致超卖，这是我们要极力避免的现象。
+- The phenomenon of selling more merchandise than the stock
 
 Suppose in a limited-time offer scene, we have 100 merchandise in total. At the last moment, when we have already sold 99 merchandises and multiple requests come in simultaneously. These requests by reading the data base get the quantity of the remaining merchandise, which is one, and all of them rush to buy the good, resulting in selling more than we have at hand. This the scenario that we are trying to avoid.
 
-#### 解决方案分析
+### Solution analysis
 
-###Solution analysis
-
-- MySQL事物隔离级别：
-
-- THe 4 levels of Isolatoin of transactions at the level of MySQL:
-
-  ​	在数据库理论中，事物的隔离性（Isolation）与数据库的事物吞吐量存在权衡（trade-off）。过于严格的事物隔离性，可以绝对保证ACID，但是对吞吐量限制太大，可用于要求严格一致性的事物，例如银行系统。但是对于本项目，会导致秒杀延迟极大，故不适用。因此，基于不同的适用过程，MySQL提出了四种事物隔离级别，适用于不同场景。
+- The 4 levels of Isolation of transactions at the level of MySQL:
 
   In the theory of data base, the Isolation of transactions is a trade-off with the through put of the transaction in data base. Strict Isolation of the transactions can ensure ACID, but it put to much limit on through put, suitable for the kind of transactions that require absolute consistency, like banking systems. But in our case, it would bring too much delay, leading to a great buying latency, meaning that it isn't suitable. Thus, based on different process that are suitable or not, mysql raised 4 levels of transaction isolation.
 
-  - **未提交读**（READ UNCOMMITTED）：不要求事物隔离性，可能导致脏读。这种无隔离性不适用于购物系统。
   - READ UNCOMMITTED: It does not require transactions to be isolated, which can lead to dirty reads. This non-isolation does not apply to shopping systems.
-  - **已提交读**（READ COMMITTED）：有一定的事物隔离性，避免了脏读，一个线程不能读取另外一个线程未提交的事物。存在幻读的问题。
-  - READ COMMITTED : There is a certain transaction isolation. And to avoid dirty reading, one thread cannot read transactions that are not committed by another thread. There are also problems of phantom reading.
-  - **可重复读**（REPEATABLE READ）：更强的事物隔离性。采用了MVCC(Multi-Version Concurrency Control)的机制，实际上就是一种乐观锁理念的实现。线程A读操作不会更新版本号，此时其它线程修改了数据，即使提交了也不会为线程A读到。线程读不会更新版本号，所以读的都是历史版本，写的时候会更新版本号到最新版本，写时无法满足一致性条件（merge失败）会被放弃。部分解决了幻读的问题。同时这也是MySQL默认的事务隔离级别。
+- READ COMMITTED : There is a certain transaction isolation. And to avoid dirty reading, one thread cannot read transactions that are not committed by another thread. There are also problems of phantom reading.
   - REPEATABLE READ: Stronger transaction isolation. It uses the MVCC (Multi-Version Concurrency Control) mechanism, which is actually the realization of an optimistic locking concept. Thread A's read operation will not update the version number. At this time, other threads have modified the data, and even if they submit, they will not read it for thread A. The thread does not update the version number when reading, so it reads the historical version. When writing, it will update the version number to the latest version. When the write fails to meet the consistency condition (merge failure), it will be abandoned. Partially solved the problem of phantom reading. This is also the default transaction isolation level for MySQL.
-  - **可串行化**（SERIALIZABLE）：无论读写直接锁表，其他操作无法进行，某时刻表有唯一的使用者。并发度为1。完全解决了幻读的问题。数据一致性达到了绝对的保障。
   - SERIALIZABLE :Regardless of reading and writing directly locking the table, other operations cannot be performed, and there is only one user at a certain timetable. The level of concurrency is 1. Completely solved the problem of phantom reading. Data consistency is absolutely guaranteed.
-
-- 基于Redis的分布式锁
-
+  
 - Distributed lock based on Redis
 
-  Redis的设计模式中是不支持事务的，但是从Redis的官方文档中，我们可以得知，要在Redis中实现事物的ACID特性，可以利用lua脚本来实现。Redis提供API,`call`来以原子性的操作来执行lua脚本。这意味着，要在分布式环境下实现事物的特性，需要由程序员从算法上来设计。
-
-  Redis中实现事务性普遍通过CAS(Compare And Set)的方式来进行设计，同时设置超时时间避免死锁。
-
-  在我们的架构中，最终采用了基于Redis的框架Redisson来实现分布式锁，Redisson的实现原理在后文详述。
-
-  The designing pattern of Redis doesn't support transaction. But according to the official documents of Redis we can infer that the ACID attributes of trandaction in Redis can be realized by using Lua script which is based on the API `call` provided by Redis in an atomic way. Which means that in order to realize the attributes of transactions in an distributed environment, programmers need to design a suitable algorithm. 
+  ​	The designing pattern of Redis doesn't support transaction. But according to the official documents of Redis we can infer that the ACID attributes of trandaction in Redis can be realized by using Lua script which is based on the API `call` provided by Redis in an atomic way. Which means that in order to realize the attributes of transactions in an distributed environment, programmers need to design a suitable algorithm. 
 
   Designs of the transactions ususally through CAS(Compare And Set), at the same time set the time out machinism to avoid dead lock.
 
   In our architecture, Redis-based framework, Redisson was finally adopted to implement distributed locks. The implementation of Redisson will be illustrated in detail later.
 
-- 基于Zookeeper的分布式锁
-
 - Distributed locks based on Zookeeper
 
-主要利用了Zookeeper文件系统的Znode.上锁就是某个节点尝试创建临时的znode，创建成功了就相当于获取这个锁。
-
-We mainly used the Znodeof the Zookeeper file system. Locking happens when a node successfully attempts to create a temporary znode.
-
-这个时候如果别的客户端来尝试创建锁就会失败，所以只能注册一个监听器来监听这个锁。释放锁就是删除这个znode，一旦释放掉就会通知客户端，然后有一个等待着的客户端就可以重新加锁。
+We mainly used the Znode of the Zookeeper file system. Locking happens when a node successfully attempts to create a temporary znode.
 
 At this time, if other clients try to create the lock, it will fail, so you can only register a listener on the lock. Releasing the lock is to delete the znode. Once released, the client will be notified, and then a waiting client can get the lock.
 
-理论上，Redis是基于CAS，需要自己不断去尝试获取锁，比较消耗CPU性能。
-
-In theory, Redis is based on CAS and needs to constantly try to acquire locks by itself, which consumes CPU performance relatively.
-
-但是Zk分布式锁如果获取不到锁，只需要注册一个监听器即可，不需要不断主动尝试获取锁，性能开销相对较小。
-
 However, if the Zookeeper distributed lock cannot obtain the lock, it only needs to register only one listener, and there is no need to constantly try to acquire the lock, and the performance overhead is relatively small.
-
-而且Zk分布式锁的语义更为清晰简单，省去了遍历上锁，计算超时时间的步骤。
 
 Moreover, the semantics of Zookeeper distributed locks are clearer and simpler, eliminating the steps of traversing the lock and calculating the timeout period.
 
@@ -178,114 +102,70 @@ Then before get access to redis, we use mutex.acquire() to get the zk lock, fina
 
 
 
-### 4. Architecture Design
+## 4. Architecture Design
 
 
-#### 4.1 架构改进前：
+### 4.1 Before Improvement
 
 ![架构改进前](https://raw.githubusercontent.com/gongfukangEE/gongfukangEE.github.io/master/_pic/%E5%88%86%E5%B8%83%E5%BC%8F/%E6%B6%88%E6%81%AF%E9%98%9F%E5%88%97%E7%BC%93%E5%86%B2.png)
 
-- 请求首先到达一个Portal Server，在这里，通过令牌桶算法限制最大流量，之后通过Nginx反向代理将请求哈希到若干Server；
+- The request first arrives at a Portal Server, where the maximum traffic is limited by the token bucket algorithm, and then the request is hashed to several servers by the Nginx reverse proxy.
 - After the Redis update is successful, it will immediately return to the user so that the user gets a response. The order is successfully created. At the same time, a background thread is started to send the order information to the message queue kafka.
-- 查询Redis库存，如果非空，进入消息队列；
-- Look up the stock of Redis. if it isn't empty, then enter the message queue.
-- 从kafka出队后用基于乐观锁机制更新Mysql，版本号合理，秒杀成功，然后更新Redis;
+- Look up the stock of Redis. if it is not empty, then enter the message queue.
 - After get out of Kafka, use to update Mysql. If the version number is consistent, the request for limited-time offer succeeded. then update Redis.
-- 版本号过期，秒杀失败
 - The version number is out of date, and the request for the merchandise is failed.
 
-解决超卖的关键：Mysql基于版本号的乐观锁
-
-Key in solving oversell phenomenon: The optimistic lock based on the version number in Mysql.
-
-性能瓶颈：MySQL更新速度慢，大量无效请求
+Key problem in solving oversell phenomenon: The optimistic lock based on the version number in Mysql.
 
 Bottle neck of the performance: Mysql update rate is slower than expected, therefore lots of the requests are invalid.
 
-##### 架构评估：
+#### Assessment of the architecture:
 
-Assessment of the architecture:
-
-- 吞吐量低：我们在测试中发现，有大量重复的版本号会导致请求失败，但是磁盘已经承受了相应的任务，这意味着我们对磁盘的利用是非常不合理的，在有限的时间内，大量的I/O操作没有用于更新库存，创建订单，反而用来确认无效订单。
-- Low through put: In the test, we found that too much overlapping version number would cause the requests tend to fail, but the disk has already endured the corresponding task, which means that we are using the disk wrongly. In a limited time, lots of IO operatoin didn't update the stock and create the orders, but checked the orders in turn.
-- 并发控制策略选取：我们选取了基于MySQL的手工乐观锁的并发控制，然而乐观锁并不适合大规模的写操作。虽然在我们的场景中写的操作相对读操作的次数是较少的，但是绝对数上来看仍然是多的，不适用于乐观并发控制，会导致大量事物回滚。
+- Low through put: In the test, we found that too much overlapping version number would cause the requests tend to fail, but the disk has already endured the corresponding task, which means that we are using the disk wrongly. In a limited time, lots of IO operation didn't update the stock and create the orders, but checked the orders in turn.
 - Concurrency control strategy selection: We selected the concurrent control of manual optimistic locking based on MySQL, however, optimistic locking is not suitable for large-scale write operations. Although the number of write operations in our scenario is relatively small compared to the number of read operations, the absolute number is still large. It is not suitable for optimistic concurrency control and will cause a large number of things to roll back.
-- 中间件性能浪费：大量无效请求消耗了Redis, Kafka, MySQL中间件的性能，这就意味着，服务集群的CPU、内存和外存资源被无效的事物逻辑支配。例如，某时刻100个请求涌入服务器，读到版本号均为1，Redis库存此时对所有请求的视图都是一致的；如果非空，这100个请求都可以进入kafka消息队列，但只有最先出队并更新MySQL的可以成功执行，下单成功，剩下的99个请求都会因为版本号过期而被放弃，而此时库存仅仅被消耗了1件，但是中间件和服务器都已经承担了100个请求的工作量。这一问题在并发量进一步增高的时候会更明显。
 - Middleware performance waste: A large number of invalid requests consume the performance of Redis, Kafka, MySQL middleware, which means that the CPU, memory and external storage resources of the service cluster are logically dominated by invalid things. For example, at a certain time, 100 requests flooded into the server, and the version number was 1. The Redis inventory is consistent with the view of all requests at this time; if not empty, these 100 requests can enter the Kafka message queue, but only the request first to dequeue and update MySQL can be successfully executed, and the order is successfully placed. The remaining 99 requests will be abandoned because the version number expires. At this time, the inventory is consumed by only one piece, but the middleware and the server have already undertaken Work load of 100 requests. This problem will become more apparent when the amount of concurrency increases further.
-- 超卖现象：
 - Oversold phenomenon:
-  - 对于MySQL使用了默认级别的事物隔离，即**可重复读**，这意味着请求在读取版本号的时候，很可能不是最新的版本号，写的时候就会写失效，返回给用户和Redis错误信息。
-  - For MySQL, the default level of transaction isolation is used, meaning that it **can be read repeatedly**. This means that when the request reads the version number, it is likely that it is not the latest version number. When it is written, it will fail to write, and the user and Redis  will get the error messages.
-  - 后续我们修改了MySQL的事物隔离级别为**已提交读**，仍然存在问题。已提交读是不锁表的。例如，库存剩下1件，两个同样版本号的事物，一个事物开启减库存未提交，另一个事物读取的时候发现仍有库存版本号也合适，也进入事物开始更新，此时前一个事物提交，后一个事物更新时候发现版本号错误。对于后一个事物来说，读时版本号通过，写时发现版本号不错，只会写无效，返回给用户和Redis错误的信息，也是不可取的。
-  - Later, we changed the transaction isolation level of MySQL to **Committed Read**, and there are still problems. Committed reads do not require locking the table. For example, there is 1 item left in the inventory, and two transactions with the same version number. One transaction is opened and the inventory is not submitted. When the other transaction reads, it is found that the version number of the inventory is still appropriate,and start to update as well. When the former transcation submitted, the latter transaction found the version number to be wrong when updating. For the latter transaction, the version number passed checking when reading, and the version number is good when writing, only write will be regarded invalid, and return wrong information to users and Redis.
-  - 在这种情况下，只有最后一种选择，**可串行化**。当我们设置隔离级别为可串行化时，吞吐量再次大幅下跌。
+  - For MySQL, the default level of transaction isolation is **REPEATABLE READ**. This means that when the request reads the version number, it is likely that it is not the latest version number. When it is written, it will fail to write, and the user and Redis  will get the error messages.
+  - Later, we changed the transaction isolation level of MySQL to **READ COMMITTED**, and there are still problems. Committed reads do not require locking the table. For example, there is 1 item left in the inventory, and two transactions with the same version number. One transaction is opened and the inventory is not submitted. When the other transaction reads, it is found that the version number of the inventory is still appropriate,and start to update as well. When the former transaction submitted, the latter transaction found the version number to be wrong when updating. For the latter transaction, the version number passed checking when reading, and the version number is good when writing, only write will be regarded invalid, and return wrong information to users and Redis.
   - In this case, there is only one last option, **serializable**. When we set the isolation level to be serializable, the throughput again drops significantly.
-- 单点故障：一旦出现故障，处理能力线性降低，关键性的节点同时宕机（例如Redis主机和所有从机），系统瘫痪。
 - Single point of failure: Once a failure occurs, the processing capacity decreases linearly, critical nodes go down simultaneously (such as the Redis master and all slaves), and the system is down.
-- Redis限流功能受限：没有充分利用Redis。一方面，Redis的作用仅仅在于令牌桶过滤部分请求，可以利用有限资源控制流量，以及所有商品售完后用来挡住后续的秒杀请求。秒杀完成之前，Redis的存在甚至有一些冗余。另一方面，Redis同时被前端请求和后端请求更新，也造成了非常忙碌的状态
 - Redis current limiting function is limited: Redis is not fully utilized. On the one hand, Redis' role is only to filter part of the requests in the token bucket, it can use limited resources to control the flow, and to block subsequent spike requests after all the products are sold out. Prior to the completion of the spike, Redis even had some redundancy. On the other hand, Redis is updated by both front-end and back-end requests, which also causes a very busy state.
 
-#### 4.2 架构改进后：
+### 4.2 After Improvement：
 
 ![image-20191214135650932](%E5%88%86%E5%B8%83%E5%BC%8F%E7%B3%BB%E7%BB%9F%E5%BC%80%E9%A2%98%E8%AE%BA%E6%96%87.assets/image-20191214135650932.png)
 
-- 请求首先到达一个Portal Server，在这里，通过令牌桶算法限制最大流量，之后通过Nginx反向代理将请求哈希到若干Server；
 - The request first arrives at a Portal Server, where the maximum traffic is restricted by the token bucket algorithm, and then the request is hashed to several Servers through the Nginx reverse proxy;
-- 每个Server按照硬件处理能力预置好一定量的本地库存，同时额外增加一定量的buffer，避免单个服务器故障之后由于本地库存总量减少，商品无法卖出；
 - Each server presets a certain amount of local inventory according to the hardware processing capacity, and at the same time adds a certain amount of buffer to avoid the failure of a single server,which would cause reducing the total local inventory and preventing the product from being sold;
-- Redis集群分布式部署在多个性能优良的节点上，实现读写分离，各个服务器的线程连接集群尝试异步更新；
 - The Redis cluster is deployed on multiple nodes with good performance to achieve read-write separation. The threads of each server connect to the cluster and try to update asynchronously.
-- Redis更新成功后会立即返回给用户使用户得到响应为订单创建成功，同时开启后台线程将订单信息送进消息队列kafka
 - After the Redis update is successful, it will immediately return to the user so that the user gets a response. The order is successfully created. At the same time, a background thread is started to send the order information to the message queue kafka.
-- kafka后台线程不断从消息队列中获得消息，构造环境，将信息同步至MySQL,事物隔离级别为可重复读即可。
 - The kafka background thread continuously obtains messages from the message queue, constructs the environment, synchronizes the information to MySQL, and ensues the transaction isolation level is repeatable.
-
-解决超卖的关键：秒杀开始前，Redis同步MySQL的库存量，Redis分布式锁保证Redis库存更新以事物的级别处理
 
 The key to solving overselling: Before the start of the spike, Redis synchronizes the inventory of MySQL. Redis distributed locks ensure that Redis inventory updates are processed at the transaction level.
 
-性能瓶颈：接口分发服务器的带宽有限，在无限带宽的前提下，Redis分布式锁为性能瓶颈
-
 Performance bottleneck: The bandwidth of the interface distribution server is limited. On the premise of unlimited bandwidth, Redis distributed locks are a performance bottleneck.
-
-有待继续改进地方：当并发量到达一个10^5/s时，偶尔会出现超卖现象，即Redisson分布式锁失效。
 
 What needs to be improved: When the concurrency reaches a 10 ^ 5 / s, oversold occurs occasionally, that is, the Redisson distributed lock fails.
 
-解决方案：对于概率极小的超卖现象，我们在MySQL处发现异常时对相应订单进行回滚并通知客户，这是一种折中的方式。
-
 Solution: For the oversold phenomenon with a very small probability, we roll back the corresponding order and notify the customer when an abnormality is found at MySQL. This is a compromise.
 
-##### 架构评估：
+#### Architecture evaluation:
 
-#####Architecture evaluation:
-
-- 透明性：
 - Transparency:
-  - 网络透明性：由于Nginx的反向代理，以及Internet, Ehernet的基础特性，这个性质可以保证。
-  - Network transparency: Due to Nginx's reverse proxy and the basic characteristics of the Internet and Ehernet, this property can be guaranteed.
-  - 复制透明性：Redis不仅在从节点有副本复制，还有自己的持久化策略；kafka收集的消息在磁盘中进行持久化；MySQL中间件维护最终的数据一致性。
+  - Network transparency: Due to Nginx's reverse proxy and the basic characteristics of the Internet and Ethernet, this property can be guaranteed.
   - Replication transparency: Redis not only has replica replication from slave nodes, but also has its own persistence strategy; messages collected by kafka are persisted on disk; MySQL middleware maintains final data consistency.
-  - 故障透明性：由于每个服务器上本地有buffer库存，所以单个服务器宕机不影响业务能力，但是肯定会影响处理效率；从中间件上讲，Redis集群里，只要不是一组master和slave同时宕机，利用Redis的哨兵机制可以尽快选举出新master继续处理业务；对于kafka，若某个节点宕机，则Zookeeper会对改节点上的分区进行重分区，重新分配到其他正常工作的节点上；对于MySQL，分布式的部署可以避免单点故障。
   - Fault transparency: Because there is buffer inventory locally on each server, the downtime of a single server does not affect business capabilities, but it will definitely affect processing efficiency. From a middleware perspective, as long as not a group of master and slaves are down at the same time Machine, using the Redis sentinel mechanism can elect a new master to continue processing business as soon as possible; for kafka, if a node goes down, Zookeeper will repartition the partition on the changed node and redistribute it to other normal working nodes; For MySQL, a distributed deployment avoids a single point of failure.
-  - 性能透明性：当负载爆发时，令牌桶算法可以应对并缓冲整流，nginx可以分担请求量，kafka可以将请求进行时间解耦合，缓慢更新后台数据，经过三重措施，使得可以应对大量负载。
   - Performance transparency: When the load bursts, the token bucket algorithm can deal with and buffer the rectification, nginx can share the request amount, kafka can decouple the request in time, slowly update the background data, and after triple measures, it can handle a large amount of load.
-  - 伸缩透明性：当硬件或服务器资源增加时，nginx可以增加成员以均分请求，redis可以增加节点以减少分区，使得每个节点处理压力减少；kafka可以增加集群中节点数目，进而提高分区数量，原来的分区负载会重新进行分配，最后处理的吞吐率会得到提高。
   - Scalability and transparency: When hardware or server resources increase, nginx can increase members to share requests, redis can increase nodes to reduce partitions, reducing the processing pressure of each node; Kafka can increase the number of nodes in the cluster, thereby increasing the number of partitions. The original partition load will be redistributed, and the final processing throughput will be improved.
-  - 并发透明性：这一性质可以尽量保证，但由于Redis底层的通信机制，会在高并发时偶尔发生极少数线程干扰，这一问题在MySQL处被人为干预，这是当前项目仍需改善的一个问题。
   - Concurrency transparency: This property can be guaranteed as much as possible, but due to the underlying communication mechanism of Redis, occasionally a very small number of thread interferences will occur during high concurrency. This problem has been artificially intervened in MySQL. This is a current  problem that our project needs to improve.
-- 性能瓶颈前移：不考虑带宽限制的情况下，性能瓶颈从原来的MySQL重量级读写前移到了Redis内存数据库（主要为分布式锁的处理），使得性能得到极大的提升。
 - Performance bottleneck moved forward: Without considering bandwidth limitations, the performance bottleneck was moved from the original MySQL heavyweight read and write to the Redis memory database (mainly for distributed lock processing), which greatly improved performance.
-- Redis利用优化：Redis不再前后处理请求，只接受前端服务器的请求，处理能力得到提升，并发控制压力大减。
 - Redis utilization optimization: Redis no longer processes requests before and after, only accepts requests from front-end servers, processing power is improved, and concurrency control pressure is greatly reduced.
-- 中间件性能利用率大幅提升：无效请求一部分被令牌桶算法拦截在Portal Server，一部分被拦截在本地服务器，最后一部分拦截在查询Redis，极度偶然的请求才会走到外存，访问MySQL。因此，硬件几乎都是在为有效请求处理逻辑而运转。
 - The performance of middleware is greatly improved: part of the invalid requests are intercepted by the token bucket algorithm in the Portal Server, part of the intercepted requests are intercepted in the local server, and the last part is intercepted in querying Redis. Extremely accidental requests will go to external storage and access MySQL. Therefore, the hardware is almost always running for efficient request processing logic.
-- 并发控制策略选取：主要的并发冲突从MySQL前移到了Redis，并发策略选择了Redisson RLock中的阻塞与发布订阅模型，最大化CPU利用率；MySQL处由于不干预用户相应，采用了最稳妥的`serializable`的并发控制模式。然而如前所述，Redisson的并发控制仍有失误，原因和解决方案将在后文5.5.2详述
 - Concurrency control strategy selection: The main concurrency conflict was moved from MySQL to Redis, and the concurrency strategy selected the blocking and publish-subscribe model in Redisson RLock to maximize CPU utilization; MySQL did not interfere with the user's response and adopted the most secure serializable` concurrency control mode. However, as mentioned earlier, Redisson's concurrency control still has errors. The reasons and solutions will be detailed in 5.5.2 later.
 
-### 5. Middleware-Redis
+## 5. Middleware-Redis
 
-#### 5.1 Introduction to Redis
+### 5.1 Introduction to Redis
 
 Redis is an in-memory data structure store, used as a database, cache and message broker. It supports various data structures. Redis has built-in replication, Lua scripting, LRU eviction, transactions and different levels of on-disk persistence, and provides high availability via Redis Sentinel and automatic partitioning with Redis Cluster.
 
@@ -367,17 +247,13 @@ Redis is an in-memory data structure store, used as a database, cache and messag
         }
     ```
 
-#### 5.2 Redis on-disk persistence
-
-Redis的主要工作位于内存，为了保护内存中数据的非易失性，Redis采用两种持久化策略保存数据。以下将简要分析两种策略，并解释本项目中的选取。
+### 5.2 Redis on-disk persistence
 
 The main work of Redis is in memory. In order to protect the non-volatile nature of data in memory, Redis uses two persistence strategies to save data. The two strategies are briefly analyzed below, and the choices in this project are explained.
 
-##### 5.2.1 RDB
+#### 5.2.1 RDB
 
 The RDB persistence performs point-in-time snapshots of your dataset at specified intervals.
-
-根据设置，RDB方法将在每t时间间隔检查写的次数是否超过n，超过的话就执行一次持久化
 
 According to the setting, the RDB method will check whether the number of writes exceeds n at every t interval, and if it exceeds, the persistence will be performed once.
 
@@ -389,11 +265,9 @@ Whenever Redis needs to dump the dataset to disk, this is what happens:
 - The child starts to write the dataset to a temporary RDB file.
 - When the child is done writing the new RDB file, it replaces the old one.
 
-RDB的持久化可以选择通过后台进程进行的，目的是为了维护异步性。但是创建进程（fork）仍然有巨大的开销。同时，要注意到RDB的持久化策略采取的是全量同步。
-
 RDB's persistence can be selected through a background process in order to maintain asynchronousness. But there is still huge overhead in creating the fork. At the same time, it should be noted that RDB's persistence strategy adopts full synchronization.
 
-##### 5.2.2 AOF
+#### 5.2.2 AOF
 
 The AOF persistence logs every write operation received by the server, that will be played again at server startup, reconstructing the original dataset. Commands are logged using the same format as the Redis protocol itself, in an append-only fashion. Redis is able to rewrite the log in the background when it gets too big.
 
@@ -405,32 +279,19 @@ The AOF persistence logs every write operation received by the server, that will
 - When the child is done rewriting the file, the parent gets a signal, and appends the in-memory buffer at the end of the file generated by the child.
 - Now Redis atomically renames the old file into the new one, and starts appending new data into the new file.
 
-AOF的重写操作有几种策略：每次更新重写、每秒重写、完全不重写。
-
-AOF的持久化虽然也是通过后台进行的，但可以看到，后台进程重写AOF文件时，主进程也要受到很大影响（将记录写进aof_buf和aof_rewrite_buf）。子进程创建时的fork操作也同样有较大开销。另一方面，与RDB不同，AOF采取的同步策略是增量同步。
-
 There are several strategies for AOF's rewrite operation: rewrite every update, rewrite every second, and no rewrite at all.
 
 Although the persistence of AOF is also performed through the background, it can be seen that when the background process rewrites the AOF file, the main process is also greatly affected (write records into aof_buf and aof_rewrite_buf). The fork operation when the child process is created also has a large overhead. On the other hand, unlike RDB, the synchronization strategy adopted by AOF is incremental synchronization.
 
-##### 5.2.3 Comparation and Selection
-
-比较两种同步方式，我们认为在秒杀系统中应当使用RDB的持久化方式，若干秒（>=5~10）同步一次，理由如下：
+#### 5.2.3 Comparation and Selection
 
 Comparing the two synchronization methods, we believe that RDB's persistence method should be used in the spike system. Synchronize once every few seconds (> = 5 ~ 10) for the following reasons:
 
-- 相比于AOF，同步时对于主进程的影响较少
 - Compared to AOF, the impact on the main process is less during synchronization
-- 相比于AOF，不会在每次更新时保留日志记录，影响Redis吞吐率
 - Compared to AOF, it does not keep log records on every update, which affects Redis throughput
-- AOF的同步子进程会根据log重建数据，占用在秒杀系统中，非常珍贵的CPU资源
 - The synchronization subprocess of AOF will reconstruct the data according to the log, which is occupied in the spike system, which is a very precious CPU resource.
-- 相比于AOF，有对流量波峰波谷的自动调控
 - Compared with AOF, there is automatic regulation of flow peaks and troughs
-- 由于Redis主从复制的模式就是log-based，再主动在本地磁盘写入AOF略显冗余
 - Because the mode of Redis master-slave replication is log-based, it is slightly redundant to actively write AOF on the local disk.
-
-配置文件设置如下：
 
 The configuration file settings are as follows:
 
@@ -459,13 +320,11 @@ rdbchecksum no
 appendonly no
 ```
 
-虽然如此，如果所售货物价值较高，要在整个售卖流程中需要严格监控的，应采用每次query进行AOF增量同步的模式。
-
 Even so, if the value of the goods sold is high and needs to be strictly monitored throughout the sale process, the mode of incremental synchronization of AOF with each query should be adopted.
 
-#### 5.3 Redis Cluster
+### 5.3 Redis Cluster
 
-##### 5.3.1 Redis Cluster Abilities
+#### 5.3.1 Redis Cluster Abilities
 
 Redis Cluster provides a way to run a Redis installation where data is **automatically sharded across multiple Redis nodes**.
 
@@ -480,16 +339,13 @@ The graph below shows our configuration on Redis Cluster.
 
 <img src="%E5%88%86%E5%B8%83%E5%BC%8F%E7%B3%BB%E7%BB%9F%E5%BC%80%E9%A2%98%E8%AE%BA%E6%96%87.assets/image-20191215114430222.png" alt="image-20191215114430222" style="zoom:47%;" />
 
-- Function Interface
-  - 
-
-##### 5.3.2 Redis Cluster Communication
+#### 5.3.2 Redis Cluster Communication
 
 Every Redis Cluster node requires two TCP connections open. The normal Redis TCP port used to serve clients while the second port is used for the Cluster bus, that is a node-to-node communication channel using a binary protocol. The Cluster bus is used by nodes for failure detection, configuration update, failover authorization and so forth.
 
 In our project, port 8001-8006 are for clients, while port 18001-18006 are for internal communication.
 
-##### 5.3.3 Redis Cluster Data sharding
+#### 5.3.3 Redis Cluster Data sharding
 
 Redis Cluster does not use consistent hashing, but a different form of sharding where every key is conceptually part of what we call an **hash slot**.
 
@@ -499,18 +355,7 @@ Below is our configuration about redis cluster:
 
 ![image-20191214191807685](%E5%88%86%E5%B8%83%E5%BC%8F%E7%B3%BB%E7%BB%9F%E5%BC%80%E9%A2%98%E8%AE%BA%E6%96%87.assets/image-20191214191807685.png)
 
-##### 5.3.4 Redis主从复制
-
-#####Redis master-slave replication
-
-1. 从服务器初始化
-   　　当从服务器启动时，会向主服务器发送SYNC命令，请求同步数据。主服务器接收到消息之后，进行RDB持久化，并生成一个快照文件；与此同时，主服务器会将生成快照期间新执行的命令缓存起来。在快照文件生成完毕之后，主服务器将RDB快照文件和缓存下来的命令一并发送给从服务器，从服务器首先载入接收到的RDB快照文件，接着执行被缓存下来的新命令，完成主从数据的初始化同步操作。
-2. 从服务器保持同步
-     从服务器在同步完成之后，主服务器接收到的所有命令都会异步的发送给从服务器用来保持主从数据的一致性。以此来实现Redis读写分离，读操作作用于Slave节点，写操作作用于Master节点。
-3. 从服务器故障后处理
-     当从服务器崩溃之后，重启之后进行初始化，会自动的同步主服务器的数据。此时redis采用了增量复制的方式从服务器的初始化同步数据的过程。
-4. 主服务器故障后处理
-     当主服务器崩溃之后，选举算法将选择一个从服务器升级为主服务器。
+#### 5.3.4 Redis master-slave replication
 
 1. Initialization from the server
       When the slave server starts, it sends a SYNC command to the master server to request data synchronization. After receiving the message, the main server performs RDB persistence and generates a snapshot file. At the same time, the main server caches the newly executed commands during the snapshot generation. After the snapshot file is generated, the master server sends the RDB snapshot file and the cached command to the slave server. The slave server first loads the received RDB snapshot file, and then executes the cached new command to complete the master and slave data. The initial synchronization operation.
@@ -523,15 +368,7 @@ Below is our configuration about redis cluster:
 
 In our project, the classical pattern of 3 master with 3 slaves is adopted.
 
-##### 5.3.5 Redis Sentinel
-
-​	哨兵是一个独立于数据服务器的进程，用于监控redis数据服务器的状态，当主从模式下最关键的主服务器出现故障时，能够被哨兵自动的察觉。同时哨兵会在剩余的从服务器中**"选举"**出新的主服务器，达到自动化恢复系统服务的目的.
-
-​	哨兵启动时会与主服务器建立连接，并且间接的获得所属从服务器信息，完成哨兵的初始化。哨兵初始化完成之后，会周期性的和主从服务器、其它哨兵节点(通过消息频道的订阅/发布)进行通信。
-
-　哨兵每10秒会向所有服务器发送一次**INFO**命令，获得相关redis服务器的当前状态以便决定是否需要故障恢复。
-
-　当一个哨兵在**down-after-milliseconds**规定时间内未收到主服务器的响应，则当前哨兵**"主观"**认为主服务器下线，同时和监视当前系统的其它哨兵进行投票决定，当超过当前哨兵配置中投票决定的数目时，则当前哨兵**"客观"**认为主服务器下线，哨兵集群会选举出领导哨兵来进行主从服务器集群主从状态的切换(使用Raft算法)。
+#### 5.3.5 Redis Sentinel
 
 Sentinel is a process independent of the data server. It is used to monitor the status of the redis data server. When the most critical master server fails in the master-slave mode, it can be automatically detected by the sentry. At the same time, the sentry will **"select"** the new master server among the remaining slave servers to achieve the purpose of automatic recovery system services.
 
@@ -557,51 +394,34 @@ sentinel down-after-milliseconds "500"　
 sentinel parallel-syncs "master" 1 
 ```
 
-一方面，在秒杀系统带宽及其珍贵，我们不希望由于网络拥塞导致哨兵错误认为主服务器宕机而用宝贵的时间和资源执行选举算法并重新启动主数据节点；另一方面，我们也不希望宕机的主节点迟迟无法被监测到使得Redis更新操作效率大打折扣。平衡取舍，我们将宕机时长设置为500ms。
-
 On the one hand, in the spike of system bandwidth and its preciousness, we do not want sentries to mistakenly believe that the main server is down due to network congestion, and use precious time and resources to execute the election algorithm and restart the main data node; on the other hand, we also do not want The delayed master node cannot be detected lately, which greatly reduces the efficiency of Redis update operations. To balance the trade-offs, we set the downtime to 500ms.
 
-##### 5.3.5 Shortage on Redis Cluster
+#### 5.3.6 Shortage on Redis Cluster
 
 Redis Cluster is not able to guarantee strong consistency. In practical terms this means that under certain conditions it is possible that Redis Cluster will lose writes that were acknowledged by the system to the client. Thereason why Redis Cluster can lose writes is because it uses asynchronous replication. Although no crash happens, if redis client asks data for the slave nodes, then consistence can not be guaranteed. To overcome this problem, continuous procedures are expected to detect this exception. After all, this kind of exception happens at a pretty low frequency.
 
-#### 5.4 Token Bucket Algorithm
+### 5.4 Token Bucket Algorithm
 
 <img src="%E5%88%86%E5%B8%83%E5%BC%8F%E7%B3%BB%E7%BB%9F%E5%BC%80%E9%A2%98%E8%AE%BA%E6%96%87.assets/image-20191214201050745.png" alt="image-20191214201050745" style="zoom:47%;" />
 
-令牌桶算法主要用于限流。令牌以恒定速度生成加入到令牌桶，每个请求在获得令牌后才可以继续处理业务逻辑，没有获得令牌的请求被直接拒绝。使用令牌桶算法有两个原因：
-
 The token bucket algorithm is mainly used to limit traffic. Tokens are generated and added to the token bucket at a constant speed. Each request can continue to process business logic after the token is obtained. Requests that do not obtain a token are directly rejected. There are two reasons to use the token bucket algorithm:
 
-1. 限制并发流量，可以将最大流量维持到一个现有服务器处理能力的上限；
+1. Limiting concurrent traffic can maintain the maximum traffic to the upper limit of the existing server processing capacity;
 
-   Limiting concurrent traffic can maintain the maximum traffic to the upper limit of the existing server processing capacity;
-
-2. 相比于其他限流算法，有应对突发流量的能力，秒杀前可以先装满令牌桶到达处理能力上限，保证吞吐率；
-
-   Compared with other traffic limiting algorithms, it has the ability to deal with sudden traffic. Before the spike, the token bucket can be filled to reach the upper limit of the processing capacity to ensure the throughput.
-
-- 功能接口
+2. Compared with other traffic limiting algorithms, it has the ability to deal with sudden traffic. Before the spike, the token bucket can be filled to reach the upper limit of the processing capacity to ensure the throughput.
 
 - Function interface
 
-  - boolean RedisPool.acquireToken()：申请一个令牌，成功返回true，否则返回false
   - boolean RedisPool.acquireToken (): apply for a token, return true if successful, otherwise return false
-
-- 方法实现：
-
+  
 - Method implementation:
-
-  - TokenBucket私有类
 
   - TokenBucket private class
 
-    由于操纵令牌桶的是单机单进程，所以没必要单独设置锁，利用java的synchronized特性，保证同一时刻只有一个线程可以操纵tokens变量即可。
-  
     Because the token bucket is operated by a single machine and a single process, there is no need to set a separate lock. Using the synchronized feature of Java, only one thread can manipulate the tokens variable at a time.
-  
+
     ```java
-    class TokenBucket{
+  class TokenBucket{
         private Integer tokens=50000;
         private static Integer maxTokens = 500000;
     
@@ -620,17 +440,13 @@ The token bucket algorithm is mainly used to limit traffic. Tokens are generated
             --tokens;
           return true;
         }
-  }
+    }
     ```
-
-  - RedisPool类涉及令牌桶的方法：
   
   - Methods of the RedisPool class involving token buckets:
   
-    利用@Scheduled注解，调用定时方法
-  
     Use @Scheduled annotation to call timing method
-    
+
     ```java
         // 每1ms，令牌桶中令牌增加一个，可以根据服务器处理能力进行调整
     	@Scheduled(fixedRate = 1)
@@ -645,14 +461,7 @@ The token bucket algorithm is mainly used to limit traffic. Tokens are generated
     
     
 
-#### 5.5 Redisson
-
-Redis原生的事务特性是基于乐观锁和CAS机制实现的，这在本项目中产生两个问题：
-
-1. 乐观锁不适用于高并发的场景，大量的Redis更新请求会被废弃，浪费CPU和内存资源；
-2. 简单的CAS机制容易产生ABA问题，即事务1执行开始时确定数据为A，在执行过程中事务2更改数据为B，事务3再更改其为A，事务1提交更新的时候比对无误提交成功，但实际上数据已经是脏数据。
-
-基于这两个原因，尤其是第一个原因，我们放弃使用Redis原生的事务特性，改为使用基于Redis的分布式框架Redisson.
+### 5.5 Redisson
 
 Redis' native transaction features are implemented based on optimistic locking and CAS mechanisms, which caused two problems in this project:
 
@@ -661,15 +470,9 @@ Redis' native transaction features are implemented based on optimistic locking a
 
 Based on these two reasons, especially the first one, we abandoned the use of Redis' native transaction features and switched to using Redis-based distributed framework Redisson.
 
-##### 5.5.1 Redisson 加锁与释放
+##### 
 
-#####5.5.1Redisson lock and release
-
-​	Redisson加锁实际上是通过Redis 的eval指令执行lua脚本来实现的。Redisson加锁基本思路为设置一个hset，key为锁ID，field为主机UUID加上线程UUID，value为锁的重入锁。为避免死锁，锁有一定的超时期限，超时自动释放。
-
-​	为了避免业务逻辑没完成，锁就已经超时，Redisson设置了watchdog，每到超时期限的1/3，就监测锁是否仍被占有，如果仍被占有就刷新锁的超时时间。
-
-​	另外，redisson的加锁机制并非忙等，而是基于java.util.concurrent包中的发布订阅模型，首先线程订阅锁，如遇锁被占用则阻塞掉等待通知；锁的占有者在释放时发布消息，订阅者可以再次“抢”锁。
+#### 5.5.1 Redisson lock and release
 
 Redisson locking is actually implemented by executing Lua scripts through Redis's eval instruction. The basic idea of Redisson locking is to set an hset, key is the lock ID, field is the host UUID plus the thread UUID, and value is the lock reentry lock. To avoid deadlocks, locks have a certain timeout period and are automatically released when the timeout expires.
 
@@ -690,14 +493,6 @@ In addition, redisson's locking mechanism is not busy waiting, but based on the 
               "end; " +
               "return redis.call('pttl', KEYS[1]);"
 ```
-
-1. 如果通过 `exists` 命令发现当前 key 不存在，即锁没被占用，则执行 `hset` 写入 Hash 类型数据 **key:全局锁名称**（例如共享资源ID）, **field:锁实例名称**（Redisson客户端ID:线程ID）, **value:1**，并执行 `pexpire` 对该 key 设置失效时间，返回空值 `nil`，至此获取锁成功。
-
-2. 如果通过 `hexists` 命令发现 Redis 中已经存在当前 key 和 field 的 Hash 数据，说明当前线程之前已经获取到锁，因为这里的锁是**可重入**的，则执行 `hincrby` 对当前 key field 的值**加一**，并重新设置失效时间，返回空值，至此重入获取锁成功。
-
-3. 最后是锁已被占用的情况，即当前 key 已经存在，但是 Hash 中的 Field 与当前值不同，则执行 `pttl` 获取锁的剩余存活时间并返回，至此获取锁失败
-
-类似Redisson加锁，Redisson释放锁也是通过lua脚本来完成的：
 
 1. If you find that the current key does not exist through the `exists` command, that is, the lock is not occupied, execute` hset` to write Hash type data **key: global lock name** (such as shared resource ID), **field: Lock instance name** (Redisson client ID: thread ID), **value: 1**, and execute `pexpire` to set the expiration time for the key, returning the null value` nil`, and the lock acquisition is successful.
 
@@ -727,11 +522,6 @@ Similar to Redisson lock, Redisson release lock is also completed by lua script:
                     "return nil;",
 ```
 
-1. key 不存在，说明锁已释放，直接执行 `publish` 命令发布释放锁消息并返回 `1`。
-2. key 存在，但是 field 在 Hash 中不存在，说明自己不是锁持有者，无权释放锁，返回 `nil`。
-3. 因为锁可重入，所以释放锁时不能把所有已获取的锁全都释放掉，一次只能释放一把锁，因此执行 `hincrby` 对锁的值**减一**。
-4. 释放一把锁后，如果还有剩余的锁，则刷新锁的失效时间并返回 `0`；如果刚才释放的已经是最后一把锁，则执行 `del` 命令删除锁的 key，并发布锁释放消息，返回 `1`。
-
 1. The key does not exist, indicating that the lock has been released. Execute the `publish` command directly to release the lock release message and return` 1`.
 2. The key exists, but the field does not exist in the Hash, indicating that he is not the lock holder. He has no right to release the lock and returns `nil`.
 3. Because locks are reentrant, you cannot release all acquired locks when releasing a lock. Only one lock can be released at a time, so execute `hincrby` on the value of the lock **minus one**.
@@ -739,15 +529,12 @@ Similar to Redisson lock, Redisson release lock is also completed by lua script:
 
 - Function Interface
 
-  - boolean redisDecrStock(Integer sid, Stock s)：查看Redis并试图减少库存
   - boolean redisDecrStock (Integer sid, Stock s): Look at Redis and try to reduce inventory
-
+  
 - Method Implementation
 
-  - redisson试图获取锁之后
-
   - After redisson tried to acquire the lock
-  
+
     ```java
         //本地更新库存后，申请Redis的库存
         public static boolean redisDecrStock(Integer sid, Stock s) throws Exception {
@@ -776,146 +563,81 @@ Similar to Redisson lock, Redisson release lock is also completed by lua script:
   
     
 
-##### 5.5.2 Redisson锁的局限性
+#### 5.5.2 Limitations of Redisson locks
 
-#####5.5.2Limitations of Redisson locks
-
-​	根据上文分析，Redisson的锁实现方法本质上是使用lua脚本进行原子操作，可以保证同一时刻只有一个线程在操作共享变量，然而Redis底层的主从复制通信机制没有强一致性的保证，致使Master的信息很难零延迟增量同步至Slave节点。在这段时间内，商品的锁已经被释放，下一个请求很可能也利用这段时间获得锁，发现库存未减，于是正常操作导致超卖。虽然相比于释放锁、获取锁的执行时间，服务器集群之间通信的时间会很短，但是在集群之间流量过高，占用了绝大多数带宽的时候，网络延迟会被放大，尤其在服务器集群之间链路性能不佳的时候，可能造成故障。经过我们的测试，在复旦大学计算机科学技术学院实验用服务器的基础上，模拟10^7级别的线程压力测试，偶尔造成1个商品超卖。针对这个问题，我们将在后续部分给予补充。
-
-According to the analysis above, Redisson's lock implementation method essentially uses lua scripts to perform atomic operations, which can ensure that only one thread is operating on shared variables at the same time. However, the underlying master-slave replication communication mechanism of Redis does not have a strong consistency guarantee, causing the Master It is difficult to synchronize the information to the slave nodes with zero delay increments. During this time, the lock of the product has been released. The next request is likely to use this time to obtain the lock, and it is found that the inventory has not been reduced, so normal operations lead to oversold. Although the communication time between server clusters will be shorter than the execution time of releasing and acquiring locks, when the traffic between the clusters is too high and the vast majority of bandwidth is consumed, the network delay will be amplified, especially in When the link performance between server clusters is poor, it may cause a failure. After our test, based on the experimental server of the School of Computer Science and Technology of Fudan University, a 10 ^ 7 level thread stress test was simulated, which occasionally caused overselling of one product. In response to this problem, we will supplement it in subsequent sections.
+​	According to the analysis above, Redisson's lock implementation method essentially uses lua scripts to perform atomic operations, which can ensure that only one thread is operating on shared variables at the same time. However, the underlying master-slave replication communication mechanism of Redis does not have a strong consistency guarantee, causing the Master It is difficult to synchronize the information to the slave nodes with zero delay increments. During this time, the lock of the product has been released. The next request is likely to use this time to obtain the lock, and it is found that the inventory has not been reduced, so normal operations lead to oversold. Although the communication time between server clusters will be shorter than the execution time of releasing and acquiring locks, when the traffic between the clusters is too high and the vast majority of bandwidth is consumed, the network delay will be amplified, especially in When the link performance between server clusters is poor, it may cause a failure. After our test, based on the experimental server of the School of Computer Science, Fudan University, a 10 ^ 7 level thread stress test was simulated, which occasionally caused overselling of one product. In response to this problem, we will supplement it in subsequent sections.
 
 
 
-### 6. Kafka
+## 6. Kafka
 
-#### 6.1 Kafka简介
-
-#### Introduction to Kafka
-
-Kafka是一个分布式的基于Zookeeper协调的发布订阅系统。
+#### 6.1 Introduction to Kafka
 
 Kafka is a distributed publish-subscribe system accordinated with Zookeeper.
 
-主要应用场景: 日志收集系统与消息系统。
-
 It is widely used in log collecting system or serves as a highly efficent message queue.
-
-Kafka主要设计目标：
 
 Principles of Kafka:
 
-- 以O(1)时间复杂度提供消息持久化的能力，对TB级别的数据也能保证常数时间的访问性能。
-
 High efficiency： ability to provide data persitency with extremely high efficiency, can access TB level of data in constant time complexity. 
-
-- 高吞吐率。在廉价机器上也能做到单机支持100K/s速率的消息传输
 
 High throuthput: support message transport with at the speed of 100 K/s on a cheap machine. 
 
-- 支持消息分区，以及分布式消费。可以保证每个分区内部消息的顺序传输
-
 Partitioning and distributed consuming: guarantee that each message is transported in order within each partition
-
-- 同时支持离线数据处理与实时数据处理
 
 The ability of online and offline data processing
 
-#### 6.2 发布订阅消息系统
-
-#### Publish - subscribe message system
+#### 6.2Publish - subscribe message system
 
 ![img](https://images2018.cnblogs.com/blog/1228818/201805/1228818-20180507190443404-1266011458.png)
 
 图片ref:https://images2018.cnblogs.com/blog/1228818/201805/1228818-20180507190443404-1266011458.png
 
-Kafka是一种发布-订阅消息系统，所谓发布订阅系统，指的是发布者不直接把信息发给消费者，发布者把消息持久化到一个topic中。与点对点消息系统不同的是，消费者可以订阅一个或者多个topic，消费者可以消费该topic中所有的数据，而且同一条数据可以被多个消费者消费。发布者发送到topic的消息，只有订阅了topic的订阅者才会收到消息。
-
 As we mention above, Kafka is a publish-subscribe system, which means the publisher does not have to send the message to consumer, directly. Instead, message sent by the publicher can be persited in a topic. Furthermore, in contrast of the point-2-point message system, consumers can subscribe more than one topic simultaneously.In other words, one single data can be consumed by multiple consumers. Only those consumers which have already subscribed the specific topics can receive the messages.
 
-
-#### 6.3 Kafka在本项目中的作用
-
-#### Usage of Kafka in this project
-
-- 解耦
+#### 6.3Usage of Kafka in this project
 
 - Decoupling
 
-解耦指的是在项目启动的时候，难以预测未来的具体需求。那么消息系统可以在处理过程中插入一个隐含的，基于数据的接口，两边的处理过程都要实现这个接口。
-
 Decoupling means that sometimes it is hard to predict the future demand in specfic, especially upon the beginning of the project. So message queue like Kafka can serve as a implicit, data-based interface between the other middlewares.
 
-具体在本项目中，解耦具体表现在订单访问redis预减库存量以及最终访问数据库库存量之间。
-
 To be more specfic, this project use Kafka to decouple the process between redis and mysql. When successfully pre-decreasing the stock number in redis, the process with automaically start a new thread to send the data to Kafka. Finally, the Kafka consumer listener thread will detect a new data in the queue and send it to mysql, tring to update the final stock number in mysql.
-
-- 削峰
 
 - despiking
 
 Sometimes in occasions where the amount of data will increase rapidly like seckilling system， message queue can serves as a powerful buffer-like middleware. The main goal of our system is to minimize the request sent to the mysql simultaneously, cause it may cause heavy overhead or even deadlock when mysql handle vast amount of request. So by using Kafka, requests will be enqueued quickly but dequeued slowly, so the pressure of mysql can be reduced. In a word, despiking with Kafka can decrease the possibility that the whole system would crash.
 
-削峰指有时候数据量会剧增，那么如果以处理这类峰值访问为标准来投入资源，会造成巨大的浪费。因此使用消息队列能够使得关键组件顶住突发的访问压力，使得系统不会因为突发的超负荷请求而完全崩溃。
-
-具体在本项目中，削峰体现在大量的秒杀请求入队然后通过消息队列缓慢出队，以减少对数据库访问的压力。
-
-- 可扩展性
-
 - scalability
 
 The broker number can be easily adjusted according to the amount of requests.
-
-消息队列解耦了消息处理过程，所以使得调节消息处理速度也变得更加方便。可以通过简单改变集群数，分区数就可以轻易地增大消息入队和处理的频率。
-
-- 异步通信
 
 - Asynchronous communication
 
 Asynchronous communication means producer does not have to wait for the consumer to respond the message sent to it. Instead, the producer will continue to send messages regardless of the sending result. Compared with synchronous communication, it certainly boost the efficieny of message processing.
 
-异步通信指消费者有时候不想立刻处理生产者发来的消息，因此消息队列提供了异步处理机制。允许用户把一个消息放入队列，但是不立即处理。
-
-具体在本项目中，体现在把整个下单访问数据库的过程异步化，每个请求的成功访问与否互不关联，提高了消息处理的效率。
-
-#### 6.4 Kafka基本概念
-
-- Basic concepts of Kafak
+####6.4Basic concepts of Kafak
 
 - Broker
 
 Kafka cluster container multiple server nodes, namelyy broker. Each broker save the topic's partition data.
 
-kafka集群中包括多个服务器，单个服务器节点即broker. broker存储着topic的partition数据
-
 - Topic
 
 Each message sent to kafka cluster is assigned to a topic. Topic serves as a logically message set, here the word "logically" means that multiple partition datas within a single topic are stored in different brokers.But for the consumer, it does not have to care about where the data is stored.
-
-每一条发布到Kafka集群的消息都有一个类别，即Topic. 属于逻辑上的消息集合概念，实际物理上同一个Topic的多个分区数据可能是存储在不同broker上的，但是对使用者来说不必关心数据存于何处
 
 - Partition
 
 Datas within one single topic are stored in more than one paritions. Inside each partition, the datas are stored with multiple segments.Furthermore, data withn a single partition can be consumed by strict order.
 
-topic中的数据实际上会分布在一个或者多个partition上存储。每个分区中的数据使用多个segment文件存储。分区内的数据可以保证有序性。
-
 - Producer
 
 The responsibiliy of producer is to send the message to a specific topic in Kafka. Broker will automatically append the newly-incoming data to the segment.
-
-消息的发布者，角色把消息发布到Kafka的topic中，broker接收到生产者发送的消息后，broker会把消息**追加**到当前用于存储数据的segment中。
 
 - Consumer
 
 Consumer is responsible for reading the data of the topic, we try to use spring-kafka , a package highly coupled with Spring-Boot. When the seckilling service starts, it will start a new consumer listener thread. To increase the consuming speed, we also start a threadpool to multiplex the consumer thread. 
 
-消费者负责从broker中读取topic数据，本项目中采用spring-kafka，在秒杀服务启动的时候会额外启动一个消费者监听线程，负责监听Kafka集群中的分区，消费数据。
-
-#### 6.5 Kafka在本项目中的部署与参数配置优化
-
-#### Deployment of Kafka and optimization of configuration.
-
-本项目在五台服务器上共搭建5节点的Kafka Broker与ZooKeeper集群
+#### 6.5Deployment of Kafka and optimization of configuration.
 
 Following are the server name, ip address and basic configuration of the 5 servers we use.
 
@@ -929,8 +651,6 @@ Following are the server name, ip address and basic configuration of the 5 serve
 | node4  | 172.101.8.6 | 8cpu 16G内存 |
 
 
-
-Kafka Broker配置优化：
 
 Optimization of server configuration of Kafka 
 
@@ -1106,77 +826,40 @@ So at the beginning of the project, we create a consumer object and run the exec
 
 During Experiment, we find out that the first version has a serious problem of consumption backlog.And the consumption speed is quite slow. While the consumption speed of second version is relatively satisfactory and enough to handle the vast amount of requests.
 
+### 7.Bottleneck of the seckilling system
 
-### 7. 性能瓶颈,问题分析与解决方案
-### Bottleneck of the seckilling system
-
-#### 问题1：Kafka消费速度过慢及产生消费挤压问题
-
-Problem 1: Kafka consuming speed is slow and the occurance of consumption backlog
+####Problem 1: Kafka consuming speed is slow and the occurance of consumption backlog
 
 At the beginning, the partition number of Kafka clusters is set to 5, meaning that each node is responsible for a single partition.We find out that with this configuration, the enqueing speed is much faster than the dequeing speed, vast amount of http requests are backloged wihtin Kafka. The unsatisfactory result of the extremely-slow consumption speed it that the goods can not be sold out immediately, violating the basic principles of a seckilling system.
-
-刚开始测试的时候，Kafka集群的分区数量为5，大概每一个节点负责维护1个分区。这就导致了进队速度远远大于出队速度，导致大量HTTP请求产生了积压。
-
-架构改进前：
 
 Before improvement of the architecture
 
 We use optimistic concurrency control based on version number to avoid over-selling, 
 
-具体来说，我们采取的是基于版本号的乐观并发更新机制，意味着每个HTTP请求都会伴随一个版本号，每个HTTP请求生成的时候都会去Redis请求获得当前的版本号。只有在当前版本号与当前Mysql记录的版本号相等的HTTP请求才能成功触发库存的更新，更新成功后才会去更新Mysql和Redis版本号。
-
-举个例子，试想如果生产速度远远高于消费速度，假设现在最新的版本号为1，那么在时刻t1产生的5000个请求都会在Redis请求当前的版本号，所以这5000个请求的版本号都为1. 那么第一个出队的HTTP的请求会成功触发Mysql库存更新，版本号更新为2。但是接下来的时间都是用来处理剩下的4999个请求，这4999个请求由于版本号为1，所以更新失败。所以系统大量时间浪费在处理无效的对Mysql访问的HTTP请求，导致新的版本号对应的请求无法及时访问Mysql，导致秒杀商品难以迅速售光。
-
-架构改进后：
-
 After improvement of the architecture
-
-这时候因为Redis已经扛住了大量的无效请求，所以发送给Kafka的请求量其实并不大。因此对消费速度的要求其实并不高。
 
 Since Redis has already stop the majority of invalid request, the number of requests sent to kafka is actually quite small.So Kafka is no longer the bottleneck of the project anymore.
 
-提升Kafka消费速度的解决方案：
-
 Solution to boostig the consumption speed of Kafka
-
-- 增加分区数量，结合线程池进行多线程消费
 
 - increasing the partition number, consume with multithread based on thread-pool
 
 We try to increase the partition number from 5 to 100, each node handles 20 paritions on average. Theoretically, the throughput of Kafka is proportional to the number of partitions, thus the consumption speed will be higher. Furthermore, with more partitions, the pressure of handling messages will be reduced for each partition. It is less likely for consumption logback to happen.We replace the single-thread kafka listener with a thread-pool solution, each consumption thread is responsible for handling requests coming from a single partition.
 
-分区数量从5个增加到100个，平均每个服务器节点handle20个分区。理论上分区数目越多，kafka的吞吐量会越大，处理消息的速度也会越快。因为分区越多，间接减少了单个分区的消息负载的压力，减少了单个分区消费积压发生的可能性。在增大分区后，生产者还是随机把秒杀请求分发到100个分区，而原来的Kafka监听单线程改写为使用线程池，开启100个监听线程，每个消费线程具体负责消费1个分区的HTTP请求。
-
-- 消费者关闭auto commit自动提交偏移量选项
-
 - set the enable-auto-commit option as false 
 
 Since the update of parition offset concerns with Network IO, we can instead commit the offset manually so as to reduce the overhead of network IO and relieve the pressure of bandwidth, thus increasing the consumption speed.
 
-设置enable-auto-commit:false
-
-分区偏移量的更新涉及到网络的IO，因此可以选择手动提交偏移量offset，以减少网络IO开销，减轻带宽压力，进而提高消费速度。
-
-- 分批消费消息，增加单次拉取消息的大小
+enable-auto-commit:false
 
 - Consume the message in batch size
 
 We modify the max-pool-records option as 10000, which means we can process at most 10000 requests in each single IO.Thus the IO number can be sharply reduced and consumption speed is again boosted.
 
-修改max-poll-records为10000，即单次消费数据最大条数为10000.
-
-并且把逐条消费数据改为分批消费数据，每次网络IO能处理更多的消费量，同样减少了消费者的IO次数，提高了消费速度。
-
-- 生产者采取消息序列化与压缩算法
-
 - Producer serialie the requests with efficient compression algorithm
 
 First we can serilaize the json-object like HTTP request as byte stream to minimize the size of the message.Also, Kafka has many  high-efficient built-in compression algorithm to further reduce the size of the daat.Here we use gzip algorithm since its compression performance stands out most.
 
-首先把Json格式的HTTP请求序列化为字节流，减少要传递的消息大小。并且kafka在消息传递的时候内置支持了许多压缩算法，这里采用压缩性能比最高的gzip算法。从而能够减少通信的开销。
-
-- 在Kafka属性配置文件中调参
 - Optimization in the server.properties of Kafka producer
 
 We have discussed this part above.The main goal can be summarized as :
@@ -1187,43 +870,26 @@ We have discussed this part above.The main goal can be summarized as :
 
 * Sacrifice the orderness of messages for higher throughout
 
-详细介绍见Kafka在本项目中的部署与参数配置优化一节中的介绍，核心思想就是通过增加IO处理的线程数量，减少传输次数与传输的数据量量以减轻网络带宽的压力，以及牺牲数据的完整性有序性来换取尽可能高的吞吐量。
-
 With above optimziation, we find out that the consumption performance is boosted heavily, and we also solve the consumption logback problem. 
 
 Actually, the biggest bottleneck of the system is network bandwidth.Since we initially deploy our service locally, while the middlewares like redis and kafka are deployed on the campus's servers. Service deployed locally have to send the RESTful request to remote server, this may cause a great deal of time.So we decide to deploy the seckilling service on remote server where serive itself along with Kafka,Redis and Mysql are withn the same LAN. The test result shows that the performance of remotely deploy version is 3-4 times better than the local version. 
 
-经过上述优化后，消费速度提升非常明显，能够较好地解决消费滞后和消费挤压问题，库存商品卖不完的问题也得到了解决。
 
-经分析，网络带宽才是我们的整个项目的性能最大瓶颈。因为我们的秒杀服务一开始是在本地部署的，而中间件都是部署在学校的服务器，本地部署的秒杀服务把Restful请求传输到远程服务器上，这段时间开销比较大。后来当把秒杀服务部署到远程服务器后，秒杀服务与Kafka，Redis和Mysql同在一个局域网内，因此网络io速度也大大提高，经测试，秒杀完成速度提高了3-4倍。
 
-#### 问题2： 高并发下的JVM调优
-
-JVM optimization with high concurrency
-
-在测试的时候，发现由于大量线程对象的生成导致堆内存空间压力比较大，经常导致秒杀服务崩溃的情况，因此要对JVM的参数调优：
+####JVM optimization with high concurrency
 
 During experiment, we also find out that the serive would crash occasionally, since hadnling large amount of thread simultaneously will definitely pose huge pressure on the JVM heap space. And the production of vase amount of objects also means we need to take garbage collection (GC) into consideration.
 
 The solution we come forward can be summaried as:
 
-1.优化虚拟机堆的空间大小，并根据实际物理内存的大小进行比例分配，并且，堆不进行自动扩展。然后使用ParNew+CMS进行垃圾回收。
-
 1.Optimize the heap space size, allocating the heap space with the memory we have (16G). And we stop the auto-expanding of the heap to reduce overhead. Finally we choodse ParNew + CMS(Concurrent Mark Sweep) algorithm to perform GC.
-
-2.一个线程都有一个对应的线程栈区，可以考虑减小单个线程栈区的大小，使得在相同的物理内存下可以提高产生的线程数量。
 
 2.Since each thread has it own thread stack, we can reduce the stack size of each thread, so with same memory we can produce more thread.
 
-3.尽可能使得垃圾回收发生在新生代，减少老生代GC的次数，进而提高程序的影响速度和吞吐量。
-
 3.Make sure garbage collection happens in young generation, minimize the number of GC in old generation so as to boost the respond speed and throughput of the system.
-
-4.大量线程对象的生成同时也意味着大量垃圾的产生，因此要修改垃圾回收策略，尽可能提高新生代垃圾回收的效率。
 
 4.Optimize the garbage collection policy to improve the efficiency of GC in young generation.
 
-具体配置：
 Configuration:
 
 ```
@@ -1257,10 +923,7 @@ Configuration:
 
 ```
 
-
-#### 问题3： 高并发下基于Redission 实现的分布式锁失效
-
-Problem 3: Failing of Redis lock based on Redission with relatively high concurrency.
+####Problem 3: Failing of Redis lock based on Redission with relatively high concurrency.
 
 During experiemnt, we find out that when we test the system with relatively high concurrency, like more than 10000 HTTP requests per second, the concurrecny control with Redis lock will fail working. To be specfic, during the test we find out that sometimes the system may oversell the products of one or two.  We guessed that is is probably caused by the third-party package Redission we use, maybe it it is not that reliable as its official website have claimed. 
 
@@ -1339,7 +1002,7 @@ Realization: As in this project, the information for the good is contained in UR
 
 ####How to use Nginx in this project
 
-configure
+the configure
 
 make
 
@@ -1430,7 +1093,7 @@ Before improvement:
 
 王泽宇：新架构的设计与代码重构；Redis部分环境配置及在本项目中的部署；Redis和Redisson部分java代码实现；参与多线程设计；代码测试调优。
 
-谢天翊：nginx配置与调优 jvm性能调优 参与多线程设计 Mysql接口优化.
+谢天翊：nginx配置部署以及添加新模块 jvm性能调优 参与多线程设计 Mysql接口优化.
 
 ### 附录：程序使用
 #### How to start the Service
