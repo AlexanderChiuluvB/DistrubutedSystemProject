@@ -9,4 +9,4 @@
 
 该项目所使用框架还是比较稚嫩，没有考虑到实际各种问题，下面是我博客里对架构的再思考。
 
-https://editor.csdn.net/md?articleId=104451922
+https://blog.csdn.net/weixin_38499215/article/details/104451922
